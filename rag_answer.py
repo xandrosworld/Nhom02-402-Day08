@@ -331,56 +331,48 @@ def rag_answer(
     top_k_search: int = TOP_K_SEARCH,
     top_k_select: int = TOP_K_SELECT,
     use_rerank: bool = False,
+    use_transform: bool = False,
+    transform_strategy: str = "expansion",
     verbose: bool = False,
 ) -> Dict[str, Any]:
     """
-    Pipeline RAG hoàn chỉnh: query → retrieve → (rerank) → generate.
-
-    Args:
-        query: Câu hỏi
-        retrieval_mode: "dense" | "sparse" | "hybrid"
-        top_k_search: Số chunk lấy từ vector store (search rộng)
-        top_k_select: Số chunk đưa vào prompt (sau rerank/select)
-        use_rerank: Có dùng cross-encoder rerank không
-        verbose: In thêm thông tin debug
-
-    Returns:
-        Dict với:
-          - "answer": câu trả lời grounded
-          - "sources": list source names trích dẫn
-          - "chunks_used": list chunks đã dùng
-          - "query": query gốc
-          - "config": cấu hình pipeline đã dùng
-
-    TODO Sprint 2 — Implement pipeline cơ bản:
-    1. Chọn retrieval function dựa theo retrieval_mode
-    2. Gọi rerank() nếu use_rerank=True
-    3. Truncate về top_k_select chunks
-    4. Build context block và grounded prompt
-    5. Gọi call_llm() để sinh câu trả lời
-    6. Trả về kết quả kèm metadata
-
-    TODO Sprint 3 — Thử các variant:
-    - Variant A: đổi retrieval_mode="hybrid"
-    - Variant B: bật use_rerank=True
-    - Variant C: thêm query transformation trước khi retrieve
+    Pipeline RAG hoàn chỉnh: (transform) → query → retrieve → (rerank) → generate.
     """
     config = {
         "retrieval_mode": retrieval_mode,
         "top_k_search": top_k_search,
         "top_k_select": top_k_select,
         "use_rerank": use_rerank,
+        "use_transform": use_transform,
+        "transform_strategy": transform_strategy if use_transform else None,
     }
 
+    # --- Bước 0: Transform Query (optional) ---
+    search_queries = [query]
+    if use_transform:
+        search_queries = transform_query(query, strategy=transform_strategy)
+        if verbose:
+            print(f"[RAG] Transformed queries: {search_queries}")
+
     # --- Bước 1: Retrieve ---
-    if retrieval_mode == "dense":
-        candidates = retrieve_dense(query, top_k=top_k_search)
-    elif retrieval_mode == "sparse":
-        candidates = retrieve_sparse(query, top_k=top_k_search)
-    elif retrieval_mode == "hybrid":
-        candidates = retrieve_hybrid(query, top_k=top_k_search)
-    else:
-        raise ValueError(f"retrieval_mode không hợp lệ: {retrieval_mode}")
+    all_candidates = []
+    for q in search_queries:
+        if retrieval_mode == "dense":
+            all_candidates.extend(retrieve_dense(q, top_k=top_k_search))
+        elif retrieval_mode == "sparse":
+            all_candidates.extend(retrieve_sparse(q, top_k=top_k_search))
+        elif retrieval_mode == "hybrid":
+            all_candidates.extend(retrieve_hybrid(q, top_k=top_k_search))
+        else:
+            raise ValueError(f"retrieval_mode không hợp lệ: {retrieval_mode}")
+
+    # Deduplicate candidates by text
+    seen_texts = set()
+    candidates = []
+    for c in all_candidates:
+        if c["text"] not in seen_texts:
+            candidates.append(c)
+            seen_texts.add(c["text"])
 
     if verbose:
         print(f"\n[RAG] Query: {query}")
@@ -460,33 +452,58 @@ def compare_retrieval_strategies(query: str) -> None:
 
 if __name__ == "__main__":
     # =========================================================================
-    # Thay đổi MODE ở đây để chọn chiến lược muốn test: "dense" | "sparse" | "hybrid"
+    # CẤU HÌNH CHẠY THỬ (DTA - Tùng Anh)
+    # Lựa chọn 1 trong 5 chế độ:
+    # 1. "dense": Chỉ dùng Vector Search (Baseline)
+    # 2. "sparse": Chỉ dùng BM25 Keyword Search
+    # 3. "hybrid": Kết hợp Dense + Sparse (RRF)
+    # 4. "hybrid_rerank": Hybrid + VoyageAI Reranker (Top Accuracy)
+    # 5. "hybrid_transform": Hybrid + Query Expansion (Top Recall)
     # =========================================================================
-    MODE = "hybrid" 
+    MODE = "hybrid_transform"
     # =========================================================================
 
     print("=" * 60)
     print(f"RAG Answer Pipeline - Mode: {MODE.upper()}")
     print("=" * 60)
 
+    # Cấu hình tham số dựa trên MODE
+    config_params = {
+        "retrieval_mode": "hybrid",
+        "use_rerank": False,
+        "use_transform": False,
+    }
+
+    if MODE == "dense":
+        config_params["retrieval_mode"] = "dense"
+    elif MODE == "sparse":
+        config_params["retrieval_mode"] = "sparse"
+    elif MODE == "hybrid":
+        config_params["retrieval_mode"] = "hybrid"
+    elif MODE == "hybrid_rerank":
+        config_params["retrieval_mode"] = "hybrid"
+        config_params["use_rerank"] = True
+    elif MODE == "hybrid_transform":
+        config_params["retrieval_mode"] = "hybrid"
+        config_params["use_transform"] = True
+        config_params["transform_strategy"] = "expansion"
+
     # Test queries từ data/test_questions.json
     test_queries = [
         "SLA xử lý ticket P1 là bao lâu?",
-        "Khách hàng có thể yêu cầu hoàn tiền trong bao nhiêu ngày?",
-        "Ai phải phê duyệt để cấp quyền Level 3?",
-        "ERR-403-AUTH là lỗi gì?",  # Query không có trong docs → kiểm tra abstain
-        "Dự án IT-ACCESS là gì?",    # Test case cho Hybrid/Sparse
+        "Dự án IT-ACCESS là gì?",
+        "ERR-403-AUTH là lỗi gì?",
     ]
 
     print(f"\n--- Chạy thử với Mode: {MODE} ---")
     for query in test_queries:
         print(f"\nQuery: {query}")
         try:
-            result = rag_answer(query, retrieval_mode=MODE, verbose=True)
+            result = rag_answer(query, **config_params, verbose=True)
             print(f"Answer: {result['answer']}")
             print(f"Sources: {result['sources']}")
         except NotImplementedError:
-            print(f"Chưa implement mode {MODE} — hoàn thành các hàm TODO tương ứng.")
+            print(f"Chưa implement mode {MODE}.")
         except Exception as e:
             print(f"Lỗi: {e}")
 
