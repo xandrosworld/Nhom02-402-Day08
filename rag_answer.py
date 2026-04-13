@@ -22,8 +22,10 @@ Definition of Done Sprint 3:
 """
 
 import os
+import re
 from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
+from rank_bm25 import BM25Okapi
 
 load_dotenv()
 
@@ -84,29 +86,42 @@ def retrieve_dense(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]
 def retrieve_sparse(query: str, top_k: int = TOP_K_SEARCH) -> List[Dict[str, Any]]:
     """
     Sparse retrieval: tìm kiếm theo keyword (BM25).
-
-    Mạnh ở: exact term, mã lỗi, tên riêng (ví dụ: "ERR-403", "P1", "refund")
-    Hay hụt: câu hỏi paraphrase, đồng nghĩa
-
-    TODO Sprint 3 (nếu chọn hybrid):
-    1. Cài rank_bm25: pip install rank-bm25
-    2. Load tất cả chunks từ ChromaDB (hoặc rebuild từ docs)
-    3. Tokenize và tạo BM25Index
-    4. Query và trả về top_k kết quả
-
-    Gợi ý:
-        from rank_bm25 import BM25Okapi
-        corpus = [chunk["text"] for chunk in all_chunks]
-        tokenized_corpus = [doc.lower().split() for doc in corpus]
-        bm25 = BM25Okapi(tokenized_corpus)
-        tokenized_query = query.lower().split()
-        scores = bm25.get_scores(tokenized_query)
-        top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+    # DTA: Implement Sprint 3 — BM25 keyword search
     """
-    # TODO Sprint 3: Implement BM25 search
-    # Tạm thời return empty list
-    print("[retrieve_sparse] Chưa implement — Sprint 3")
-    return []
+    import chromadb
+    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
+    collection = client.get_collection("rag_lab")
+
+    # Load all chunks to build BM25 index
+    all_chunks = collection.get(include=["documents", "metadatas"])
+    documents = all_chunks["documents"]
+    metadatas = all_chunks["metadatas"]
+
+    if not documents:
+        return []
+
+    # Tokenizer: loại bỏ các ký tự đặc biệt, dấu ngoặc để bắt từ khóa chính xác hơn
+    def simple_tokenize(text: str) -> List[str]:
+        return re.findall(r"\w+", text.lower())
+
+    # Tokenize corpus và query
+    tokenized_corpus = [simple_tokenize(doc) for doc in documents]
+    bm25 = BM25Okapi(tokenized_corpus)
+
+    tokenized_query = simple_tokenize(query)
+    scores = bm25.get_scores(tokenized_query)
+
+    # Get top_k results
+    top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+
+    results = []
+    for i in top_indices:
+        results.append({
+            "text": documents[i],
+            "metadata": metadatas[i],
+            "score": round(float(scores[i]), 4)
+        })
+    return results
 
 
 # =============================================================================
@@ -121,31 +136,42 @@ def retrieve_hybrid(
 ) -> List[Dict[str, Any]]:
     """
     Hybrid retrieval: kết hợp dense và sparse bằng Reciprocal Rank Fusion (RRF).
-
-    Mạnh ở: giữ được cả nghĩa (dense) lẫn keyword chính xác (sparse)
-    Phù hợp khi: corpus lẫn lộn ngôn ngữ tự nhiên và tên riêng/mã lỗi/điều khoản
-
-    Args:
-        dense_weight: Trọng số cho dense score (0-1)
-        sparse_weight: Trọng số cho sparse score (0-1)
-
-    TODO Sprint 3 (nếu chọn hybrid):
-    1. Chạy retrieve_dense() → dense_results
-    2. Chạy retrieve_sparse() → sparse_results
-    3. Merge bằng RRF:
-       RRF_score(doc) = dense_weight * (1 / (60 + dense_rank)) +
-                        sparse_weight * (1 / (60 + sparse_rank))
-       60 là hằng số RRF tiêu chuẩn
-    4. Sort theo RRF score giảm dần, trả về top_k
-
-    Khi nào dùng hybrid (từ slide):
-    - Corpus có cả câu tự nhiên VÀ tên riêng, mã lỗi, điều khoản
-    - Query như "Approval Matrix" khi doc đổi tên thành "Access Control SOP"
+    # DTA: Implement Sprint 3 — RRF merging
     """
-    # TODO Sprint 3: Implement hybrid RRF
-    # Tạm thời fallback về dense
-    print("[retrieve_hybrid] Chưa implement RRF — fallback về dense")
-    return retrieve_dense(query, top_k)
+    dense_results = retrieve_dense(query, top_k=top_k * 2)  # Lấy rộng để merge
+    sparse_results = retrieve_sparse(query, top_k=top_k * 2)
+
+    # Reciprocal Rank Fusion (RRF)
+    # RRF_score(doc) = sum( weight / (k + rank) )
+    rrf_scores = {}  # { doc_text: score }
+    doc_map = {}     # { doc_text: metadata }
+    K = 60           # RRF constant
+
+    # Process Dense
+    for rank, res in enumerate(dense_results, 1):
+        txt = res["text"]
+        rrf_scores[txt] = rrf_scores.get(txt, 0) + dense_weight * (1.0 / (K + rank))
+        doc_map[txt] = res["metadata"]
+
+    # Process Sparse
+    for rank, res in enumerate(sparse_results, 1):
+        txt = res["text"]
+        rrf_scores[txt] = rrf_scores.get(txt, 0) + sparse_weight * (1.0 / (K + rank))
+        if txt not in doc_map:
+            doc_map[txt] = res["metadata"]
+
+    # Sort by RRF score
+    sorted_docs = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
+
+    results = []
+    for txt, score in sorted_docs:
+        results.append({
+            "text": txt,
+            "metadata": doc_map[txt],
+            "score": round(score, 6)
+        })
+
+    return results
 
 
 # =============================================================================
@@ -433,8 +459,14 @@ def compare_retrieval_strategies(query: str) -> None:
 # =============================================================================
 
 if __name__ == "__main__":
+    # =========================================================================
+    # Thay đổi MODE ở đây để chọn chiến lược muốn test: "dense" | "sparse" | "hybrid"
+    # =========================================================================
+    MODE = "hybrid" 
+    # =========================================================================
+
     print("=" * 60)
-    print("Sprint 2 + 3: RAG Answer Pipeline")
+    print(f"RAG Answer Pipeline - Mode: {MODE.upper()}")
     print("=" * 60)
 
     # Test queries từ data/test_questions.json
@@ -443,24 +475,24 @@ if __name__ == "__main__":
         "Khách hàng có thể yêu cầu hoàn tiền trong bao nhiêu ngày?",
         "Ai phải phê duyệt để cấp quyền Level 3?",
         "ERR-403-AUTH là lỗi gì?",  # Query không có trong docs → kiểm tra abstain
+        "Dự án IT-ACCESS là gì?",    # Test case cho Hybrid/Sparse
     ]
 
-    print("\n--- Sprint 2: Test Baseline (Dense) ---")
+    print(f"\n--- Chạy thử với Mode: {MODE} ---")
     for query in test_queries:
         print(f"\nQuery: {query}")
         try:
-            result = rag_answer(query, retrieval_mode="dense", verbose=True)
+            result = rag_answer(query, retrieval_mode=MODE, verbose=True)
             print(f"Answer: {result['answer']}")
             print(f"Sources: {result['sources']}")
         except NotImplementedError:
-            print("Chưa implement — hoàn thành TODO trong retrieve_dense() và call_llm() trước.")
+            print(f"Chưa implement mode {MODE} — hoàn thành các hàm TODO tương ứng.")
         except Exception as e:
             print(f"Lỗi: {e}")
 
-    # Uncomment sau khi Sprint 3 hoàn thành:
-    # print("\n--- Sprint 3: So sánh strategies ---")
-    # compare_retrieval_strategies("Approval Matrix để cấp quyền là tài liệu nào?")
-    # compare_retrieval_strategies("ERR-403-AUTH")
+    # Nếu muốn so sánh các strategies, hãy gọi hàm dưới đây:
+    print("\n--- So sánh strategies ---")
+    compare_retrieval_strategies("IT-ACCESS")
 
     print("\n\nViệc cần làm Sprint 2:")
     print("  1. Implement retrieve_dense() — query ChromaDB")

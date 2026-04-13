@@ -22,6 +22,8 @@ import csv
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import re
+from collections import Counter
 from rag_answer import rag_answer
 
 # =============================================================================
@@ -49,6 +51,38 @@ VARIANT_CONFIG = {
     "use_rerank": True,           # Hoặc False nếu variant là hybrid không rerank
     "label": "variant_hybrid_rerank",
 }
+
+def _normalize_text(text: str) -> str:
+    text = (text or "").lower().strip()
+    text = re.sub(r"\s+", " ", text)
+    return text
+
+
+def _tokenize(text: str) -> List[str]:
+    text = _normalize_text(text)
+    tokens = re.findall(r"\w+", text, flags=re.UNICODE)
+    return tokens
+
+
+def _content_tokens(text: str) -> List[str]:
+    stopwords = {
+        "là", "và", "của", "có", "cho", "trong", "một", "những", "các", "được",
+        "the", "is", "are", "a", "an", "of", "to", "in", "on", "for", "and",
+        "or", "với", "khi", "nếu", "thì", "ở", "từ", "này", "đó", "nên"
+    }
+    return [t for t in _tokenize(text) if t not in stopwords and len(t) > 1]
+
+
+def _safe_div(a: float, b: float) -> float:
+    return a / b if b else 0.0
+
+
+def _keyword_coverage(reference: str, candidate: str) -> float:
+    ref_tokens = set(_content_tokens(reference))
+    cand_tokens = set(_content_tokens(candidate))
+    if not ref_tokens:
+        return 0.0
+    return len(ref_tokens & cand_tokens) / len(ref_tokens)
 
 
 # =============================================================================
@@ -90,11 +124,45 @@ def score_faithfulness(
     """
     # TODO Sprint 4: Implement scoring
     # Tạm thời trả về None (yêu cầu chấm thủ công)
-    return {
-        "score": None,
-        "notes": "TODO: Chấm thủ công hoặc implement LLM-as-Judge",
-    }
+    if not answer.strip():
+        return {"score": 1, "notes": "Empty answer"}
 
+    if not chunks_used:
+        return {"score": 1, "notes": "No retrieved chunks"}
+
+    context_text = " ".join([
+        c.get("text", "") for c in chunks_used
+    ])
+
+    answer_tokens = _content_tokens(answer)
+    context_tokens = set(_content_tokens(context_text))
+
+    if not answer_tokens:
+        return {"score": 2, "notes": "Answer has too few content tokens"}
+
+    grounded = sum(1 for t in answer_tokens if t in context_tokens)
+    grounding_ratio = _safe_div(grounded, len(answer_tokens))
+
+    # phạt mạnh nếu answer báo lỗi / not implemented / hallucination obvious
+    low_answer = answer.lower()
+    if "error:" in low_answer or "pipeline_not_implemented" in low_answer:
+        return {"score": 1, "notes": "Pipeline error or not implemented"}
+
+    if grounding_ratio >= 0.85:
+        score = 5
+    elif grounding_ratio >= 0.70:
+        score = 4
+    elif grounding_ratio >= 0.50:
+        score = 3
+    elif grounding_ratio >= 0.30:
+        score = 2
+    else:
+        score = 1
+
+    return {
+        "score": score,
+        "notes": f"Grounded tokens: {grounded}/{len(answer_tokens)} ({grounding_ratio:.2f})"
+    }
 
 def score_answer_relevance(
     query: str,
@@ -113,11 +181,39 @@ def score_answer_relevance(
 
     TODO Sprint 4: Implement tương tự score_faithfulness
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_answer_relevance",
-    }
+    if not answer.strip():
+        return {"score": 1, "notes": "Empty answer"}
 
+    query_keywords = set(_content_tokens(query))
+    answer_keywords = set(_content_tokens(answer))
+
+    if not query_keywords:
+        return {"score": 3, "notes": "Query has too few keywords"}
+
+    overlap = query_keywords & answer_keywords
+    relevance_ratio = _safe_div(len(overlap), len(query_keywords))
+
+    # bonus nhẹ nếu answer có độ dài đủ để coi là đang trả lời
+    answer_len = len(_tokenize(answer))
+
+    if relevance_ratio >= 0.80 and answer_len >= 8:
+        score = 5
+    elif relevance_ratio >= 0.60:
+        score = 4
+    elif relevance_ratio >= 0.40:
+        score = 3
+    elif relevance_ratio >= 0.20:
+        score = 2
+    else:
+        score = 1
+
+    return {
+        "score": score,
+        "notes": (
+            f"Query keywords matched: {len(overlap)}/{len(query_keywords)} "
+            f"({relevance_ratio:.2f}); matched={sorted(list(overlap))[:8]}"
+        ),
+    }
 
 def score_context_recall(
     chunks_used: List[Dict[str, Any]],
@@ -143,37 +239,59 @@ def score_context_recall(
     3. Tính recall score
     """
     if not expected_sources:
-        # Câu hỏi không có expected source (ví dụ: "Không đủ dữ liệu" cases)
-        return {"score": None, "recall": None, "notes": "No expected sources"}
+        return {
+            "score": None,
+            "recall": None,
+            "notes": "No expected sources"
+        }
 
-    retrieved_sources = {
+    # --- Lấy sources từ chunks ---
+    retrieved_sources = [
         c.get("metadata", {}).get("source", "")
         for c in chunks_used
-    }
+    ]
 
-    # TODO: Kiểm tra matching theo partial path (vì source paths có thể khác format)
+    # Normalize (lower + chỉ lấy tên file)
+    def normalize(path: str):
+        return path.lower().split("/")[-1].replace(".pdf", "").replace(".md", "")
+
+    retrieved_norm = [normalize(r) for r in retrieved_sources]
+    expected_norm = [normalize(e) for e in expected_sources]
+
+    # --- Matching ---
     found = 0
     missing = []
-    for expected in expected_sources:
-        # Kiểm tra partial match (tên file)
-        expected_name = expected.split("/")[-1].replace(".pdf", "").replace(".md", "")
-        matched = any(expected_name.lower() in r.lower() for r in retrieved_sources)
+
+    for expected in expected_norm:
+        matched = any(expected in r for r in retrieved_norm)
         if matched:
             found += 1
         else:
             missing.append(expected)
 
-    recall = found / len(expected_sources) if expected_sources else 0
+    recall = found / len(expected_norm)
+
+    # --- Convert sang scale 1–5 ---
+    if recall >= 0.95:
+        score = 5
+    elif recall >= 0.75:
+        score = 4
+    elif recall >= 0.50:
+        score = 3
+    elif recall >= 0.25:
+        score = 2
+    else:
+        score = 1
 
     return {
-        "score": round(recall * 5),  # Convert to 1-5 scale
-        "recall": recall,
+        "score": score,
+        "recall": round(recall, 2),
         "found": found,
+        "total": len(expected_norm),
         "missing": missing,
-        "notes": f"Retrieved: {found}/{len(expected_sources)} expected sources" +
-                 (f". Missing: {missing}" if missing else ""),
+        "notes": f"Retrieved {found}/{len(expected_norm)} expected sources"
+                 + (f". Missing: {missing}" if missing else "")
     }
-
 
 def score_completeness(
     query: str,
@@ -198,11 +316,37 @@ def score_completeness(
          Rate completeness 1-5. Are all key points covered?
          Output: {'score': int, 'missing_points': [str]}"
     """
-    return {
-        "score": None,
-        "notes": "TODO: Implement score_completeness (so sánh với expected_answer)",
-    }
+    if not expected_answer.strip():
+        return {"score": None, "notes": "No expected answer"}
 
+    expected_keywords = set(_content_tokens(expected_answer))
+    answer_keywords = set(_content_tokens(answer))
+
+    if not expected_keywords:
+        return {"score": 3, "notes": "Expected answer has too few keywords"}
+
+    covered = expected_keywords & answer_keywords
+    missing = expected_keywords - answer_keywords
+    coverage_ratio = _safe_div(len(covered), len(expected_keywords))
+
+    if coverage_ratio >= 0.85:
+        score = 5
+    elif coverage_ratio >= 0.65:
+        score = 4
+    elif coverage_ratio >= 0.45:
+        score = 3
+    elif coverage_ratio >= 0.25:
+        score = 2
+    else:
+        score = 1
+
+    return {
+        "score": score,
+        "notes": (
+            f"Expected keywords covered: {len(covered)}/{len(expected_keywords)} "
+            f"({coverage_ratio:.2f}); missing={sorted(list(missing))[:8]}"
+        ),
+    }
 
 # =============================================================================
 # SCORECARD RUNNER
