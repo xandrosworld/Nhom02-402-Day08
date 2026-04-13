@@ -32,3 +32,15 @@ tiktoken>=0.9.0
 unstructured[pdf]>=0.16.19
 unstructured-inference>=0.8.0
 httpx<0.28.0
+
+# === PDF -> Markdown (CLI + Web) ===
+Flask>=3.0.0
+requests>=2.31.0
+tiktoken>=0.9.0
+unstructured[pdf]>=0.16.19
+unstructured-inference>=0.8.0
+httpx<0.28.0
+
+
+#Để chạy giao diện demo
+gradio>=4.0.0
