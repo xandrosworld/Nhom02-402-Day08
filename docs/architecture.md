@@ -28,7 +28,7 @@
 
 ---
 
-## 2. Indexing Pipeline (Sprint 1)
+## 2. Indexing Pipeline (Sprint 1) (Pham Le Hoang Nam edit)
 
 ### Tài liệu được index
 
