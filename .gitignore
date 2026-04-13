@@ -1,6 +1,11 @@
 # Environment
 .env
+.venv/
 venv/
+env/
+ENV/
+.env/
+requirements.txt
 
 # Vector store (generated, large)
 chroma_db/
