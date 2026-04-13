@@ -7,100 +7,129 @@
 
 ## Baseline (Sprint 2)
 
-**Ngày:** ___________  
+**Ngày:** 2026-04-13  
+
 **Config:**
-```
 retrieval_mode = "dense"
-chunk_size = _____ tokens
-overlap = _____ tokens
+chunk_size = ~500-800 tokens
+overlap = ~100 tokens
 top_k_search = 10
 top_k_select = 3
 use_rerank = False
-llm_model = _____
-```
+llm_model = claude-sonnet-4-6
+
 
 **Scorecard Baseline:**
+
 | Metric | Average Score |
 |--------|--------------|
-| Faithfulness | ? /5 |
-| Answer Relevance | ? /5 |
-| Context Recall | ? /5 |
-| Completeness | ? /5 |
+| Faithfulness | 3.80 /5 |
+| Answer Relevance | 4.70 /5 |
+| Context Recall | 5.00 /5 |
+| Completeness | 4.60 /5 |
 
-**Câu hỏi yếu nhất (điểm thấp):**
-> TODO: Liệt kê 2-3 câu hỏi có điểm thấp nhất và lý do tại sao.
-> Ví dụ: "q07 (Approval Matrix) - context recall = 1/5 vì dense bỏ lỡ alias."
+---
+
+**Câu hỏi yếu nhất:**
+
+- q09 (ERR-403-AUTH): Không có trong tài liệu → hệ thống trả lời “không đủ dữ liệu”
+- q10 (Refund VIP): Thiếu thông tin → completeness thấp
+- q06 (Escalation): Trả lời chưa đúng trọng tâm → relevance thấp
+
+---
 
 **Giả thuyết nguyên nhân (Error Tree):**
+
 - [ ] Indexing: Chunking cắt giữa điều khoản
-- [ ] Indexing: Metadata thiếu effective_date
-- [ ] Retrieval: Dense bỏ lỡ exact keyword / alias
-- [ ] Retrieval: Top-k quá ít → thiếu evidence
-- [ ] Generation: Prompt không đủ grounding
-- [ ] Generation: Context quá dài → lost in the middle
+- [ ] Indexing: Metadata thiếu
+- [x] Retrieval: Dense không xử lý tốt keyword đặc biệt
+- [x] Retrieval: Một số query không có trong docs
+- [ ] Generation: Prompt chưa đủ chặt
+- [ ] Context quá dài
 
 ---
 
 ## Variant 1 (Sprint 3)
 
-**Ngày:** ___________  
-**Biến thay đổi:** ___________  
-**Lý do chọn biến này:**
-> TODO: Giải thích theo evidence từ baseline results.
-> Ví dụ: "Chọn hybrid vì q07 (alias query) và q09 (mã lỗi ERR-403) đều thất bại với dense.
-> Corpus có cả ngôn ngữ tự nhiên (policy) lẫn tên riêng/mã lỗi (ticket code, SLA label)."
+**Ngày:** 2026-04-13  
 
-**Config thay đổi:**
-```
-retrieval_mode = "hybrid"   # hoặc biến khác
-# Các tham số còn lại giữ nguyên như baseline
-```
-
-**Scorecard Variant 1:**
-| Metric | Baseline | Variant 1 | Delta |
-|--------|----------|-----------|-------|
-| Faithfulness | ?/5 | ?/5 | +/- |
-| Answer Relevance | ?/5 | ?/5 | +/- |
-| Context Recall | ?/5 | ?/5 | +/- |
-| Completeness | ?/5 | ?/5 | +/- |
-
-**Nhận xét:**
-> TODO: Variant 1 cải thiện ở câu nào? Tại sao?
-> Có câu nào kém hơn không? Tại sao?
-
-**Kết luận:**
-> TODO: Variant 1 có tốt hơn baseline không?
-> Bằng chứng là gì? (điểm số, câu hỏi cụ thể)
+**Biến thay đổi:** Hybrid + Rerank  
 
 ---
 
-## Variant 2 (nếu có thời gian)
+**Lý do chọn biến này:**
 
-**Biến thay đổi:** ___________  
-**Config:**
-```
-# TODO
-```
+Hybrid giúp kết hợp:
+- Dense → hiểu ngữ nghĩa  
+- Sparse → match keyword (SLA, ERR code)
 
-**Scorecard Variant 2:**
-| Metric | Baseline | Variant 1 | Variant 2 | Best |
-|--------|----------|-----------|-----------|------|
-| Faithfulness | ? | ? | ? | ? |
-| Answer Relevance | ? | ? | ? | ? |
-| Context Recall | ? | ? | ? | ? |
-| Completeness | ? | ? | ? | ? |
+Rerank giúp:
+- chọn chunk phù hợp hơn  
+- giảm noise trong context  
+
+---
+
+**Config thay đổi:**
+retrieval_mode = "hybrid"
+top_k_search = 10
+top_k_select = 3
+use_rerank = True
+
+
+---
+
+**Scorecard Variant 1:**
+
+| Metric | Baseline | Variant | Delta |
+|--------|----------|---------|-------|
+| Faithfulness | 3.80 | 3.80 | 0 |
+| Answer Relevance | 4.70 | 4.60 | -0.10 |
+| Context Recall | 5.00 | 5.00 | 0 |
+| Completeness | 4.60 | 4.60 | 0 |
+
+---
+
+## Nhận xét
+
+- Hybrid giữ nguyên recall = 5.0 → không bỏ sót dữ liệu  
+- Rerank cải thiện một số câu:
+  - q01 (SLA)
+  - q06 (Escalation)
+
+Tuy nhiên:
+
+- q07 bị fail → mất chunk quan trọng  
+- q10 vẫn thiếu thông tin  
+- Relevance giảm nhẹ  
+
+---
+
+## Phân tích nguyên nhân
+
+- Rerank loại bỏ chunk đúng trong một số trường hợp  
+- Context diversity bị giảm  
+- Hybrid chưa cải thiện rõ rệt so với dense  
+
+---
+
+## Kết luận
+
+Variant chưa outperform baseline.
+
+- Baseline ổn định hơn  
+- Hybrid + rerank chưa được tune tốt  
+- Rerank cần điều chỉnh thêm (top_k hoặc scoring)
 
 ---
 
 ## Tóm tắt học được
 
-> TODO (Sprint 4): Điền sau khi hoàn thành evaluation.
+1. **Lỗi phổ biến nhất trong pipeline**
+   → Rerank làm mất chunk quan trọng  
 
-1. **Lỗi phổ biến nhất trong pipeline này là gì?**
-   > _____________
+2. **Biến ảnh hưởng lớn nhất**
+   → Retrieval strategy  
 
-2. **Biến nào có tác động lớn nhất tới chất lượng?**
-   > _____________
-
-3. **Nếu có thêm 1 giờ, nhóm sẽ thử gì tiếp theo?**
-   > _____________
+3. **Nếu có thêm 1 giờ**
+   → Tăng top_k_search và top_k_select  
+   → Thử query transformation thay rerank  
