@@ -1,0 +1,488 @@
+id,category,query,answer,expected_answer,faithfulness,faithfulness_notes,relevance,relevance_notes,context_recall,context_recall_notes,completeness,completeness_notes,config_label
+q01,SLA,SLA xử lý ticket P1 là bao lâu?,"## SLA Xử Lý Ticket P1 📋
+
+Dưới đây là thông tin SLA cho ticket **P1** theo tài liệu nội bộ:
+
+| Tiêu chí | Thời gian |
+|---|---|
+| ⚡ Phản hồi ban đầu | **15 phút** kể từ khi ticket được tạo |
+| 🔧 Xử lý & khắc phục | **4 giờ** |
+
+### Chi tiết quy trình P1:
+- **Escalation tự động:** Nếu không có phản hồi trong vòng **10 phút**, ticket sẽ tự động được escalate lên Senior Engineer
+- **Thông báo stakeholder:** Ngay khi nhận ticket và **cập nhật mỗi 30 phút** cho đến khi resolve
+
+### Kênh liên lạc khi có P1:
+- 📢 Slack: **#incident-p1**
+- 🔔 PagerDuty: Tự động nhắn on-call
+- ☎️ Hotline on-call: **ext. 9999** (24/7)
+
+> 💡 **Lưu ý:** SLA resolution P1 đã được cập nhật từ **6 giờ → 4 giờ** kể từ phiên bản v2026.1 (15/01/2026).
+
+[1] `support/sla-p1-2026.pdf` – Phần 2: SLA theo mức độ ưu tiên
+[2] `support/sla-p1-2026.pdf` – Phần 5: Lịch sử phiên bản
+[3] `support/sla-p1-2026.pdf` – Phần 4: Công cụ và kênh liên lạc
+
+---
+Bạn cần hỗ trợ thêm thông tin gì",Ticket P1 có SLA phản hồi ban đầu 15 phút và thời gian xử lý (resolution) là 4 giờ.,4,Grounded tokens: 102/144 (0.71),4,"Query keywords matched: 5/7 (0.71); matched=['lý', 'p1', 'sla', 'ticket', 'xử']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 15/15 (1.00); missing=[],baseline_dense
+q02,Refund,Khách hàng có thể yêu cầu hoàn tiền trong bao nhiêu ngày?,"## Thời hạn Yêu cầu Hoàn Tiền
+
+Theo chính sách nội bộ, khách hàng có thể yêu cầu hoàn tiền trong **7 ngày làm việc** kể từ thời điểm xác nhận đơn hàng [2].
+
+---
+
+### ✅ Điều kiện để được hoàn tiền [2]
+
+- Sản phẩm bị lỗi do **nhà sản xuất** (không phải do người dùng)
+- Yêu cầu gửi **trong vòng 7 ngày làm việc** kể từ ngày xác nhận đơn hàng
+- Đơn hàng **chưa được sử dụng** hoặc **chưa bị mở seal**
+
+---
+
+### ❌ Các trường hợp **không** được hoàn tiền [3]
+
+- Sản phẩm thuộc danh mục **hàng kỹ thuật số** (license key, subscription)
+- Đơn hàng đã áp dụng **mã giảm giá Flash Sale**
+- Sản phẩm đã được **kích hoạt hoặc đăng ký tài khoản**
+
+---
+
+### 📋 Quy trình gửi yêu cầu [1]
+
+1. Gửi yêu cầu qua hệ thống ticket với category **""Refund Request""**
+2. CS Agent xem xét trong **1 ngày làm việc**
+3. Nếu đủ điều kiện → chuyển sang **Finance Team**
+4. Finance Team xử lý và phản hồi trong **3–5 ngày làm việc**
+
+---
+
+> 💡 **Lưu ý:** Lưu ý phân biệt **""7 ngày làm việc""** [2] và **""7",Khách hàng có thể yêu cầu hoàn tiền trong vòng 7 ngày làm việc kể từ thời điểm xác nhận đơn hàng.,5,Grounded tokens: 139/151 (0.92),5,"Query keywords matched: 8/10 (0.80); matched=['cầu', 'hoàn', 'hàng', 'khách', 'ngày', 'thể', 'tiền', 'yêu']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 17/17 (1.00); missing=[],baseline_dense
+q03,Access Control,Ai phải phê duyệt để cấp quyền Level 3?,"## Phê duyệt cấp quyền Level 3 — Elevated Access
+
+Theo tài liệu nội bộ, để được cấp quyền **Level 3 (Elevated Access)**, yêu cầu phải có **3 bên phê duyệt** [1]:
+
+- ✅ **Line Manager**
+- ✅ **IT Admin**
+- ✅ **IT Security**
+
+---
+
+### 📋 Quy trình thực hiện [2]
+
+1. Nhân viên tạo **Access Request ticket** trên **Jira** (project: `IT-ACCESS`)
+2. **Line Manager** phê duyệt trong vòng **1 ngày làm việc**
+3. **IT Admin** kiểm tra compliance và cấp quyền
+4. **IT Security** thực hiện review (bắt buộc với Level 3)
+5. Nhân viên nhận **thông báo qua email** khi quyền được cấp
+
+---
+
+### ℹ️ Thông tin bổ sung [1]
+
+| Thông tin | Chi tiết |
+|---|---|
+| **Đối tượng áp dụng** | Team Lead, Senior Engineer, Manager |
+| **Thời gian xử lý** | 3 ngày làm việc |
+
+> 💡 **Lưu ý:** Nếu bạn cần hỗ trợ tạo ticket hoặc theo dõi tiến trình phê duyệt, hãy liên hệ IT Helpdesk để được hướng dẫn thêm nhé!","Level 3 (Elevated Access) cần phê duyệt từ Line Manager, IT Admin, và IT Security.",4,Grounded tokens: 92/125 (0.74),5,"Query keywords matched: 7/8 (0.88); matched=['cấp', 'duyệt', 'level', 'phê', 'phải', 'quyền', 'để']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 11/11 (1.00); missing=[],baseline_dense
+q04,Refund,Sản phẩm kỹ thuật số có được hoàn tiền không?,"## Chính sách hoàn tiền cho Sản phẩm Kỹ thuật số
+
+Rất tiếc, **sản phẩm kỹ thuật số thông thường KHÔNG được hoàn tiền** theo chính sách hiện hành của công ty.
+
+---
+
+### ❌ Các trường hợp ngoại lệ KHÔNG được hoàn tiền [1]
+
+- Sản phẩm thuộc danh mục **hàng kỹ thuật số** (license key, subscription)
+- Sản phẩm đã được **kích hoạt hoặc đăng ký tài khoản**
+- Đơn hàng đã áp dụng **mã giảm giá Flash Sale**
+
+---
+
+### ✅ Trường hợp có thể được xem xét hoàn tiền [2]
+
+Dù là sản phẩm kỹ thuật số, nếu bạn cho rằng sản phẩm có lỗi, yêu cầu vẫn có thể được xem xét **nếu đáp ứng đồng thời** các điều kiện sau:
+
+- Sản phẩm bị **lỗi do nhà sản xuất** (không phải lỗi người dùng)
+- Yêu cầu được gửi trong **vòng 7 ngày làm việc** kể từ ngày xác nhận đơn hàng
+- Sản phẩm **chưa được sử dụng / chưa kích hoạt**
+
+> ⚠️ *Lưu ý: Nếu sản phẩm đã được kích hoạt hoặc đăng ký tài khoản, yêu cầu hoàn tiền sẽ không được chấp thuận dù có lỗi.*
+
+---
+
+### 💳 Hình th","Không. Theo chính sách hoàn tiền, sản phẩm thuộc danh mục hàng kỹ thuật số (license key, subscription) là ngoại lệ không được hoàn tiền.",4,Grounded tokens: 127/155 (0.82),5,"Query keywords matched: 8/8 (1.00); matched=['hoàn', 'không', 'kỹ', 'phẩm', 'sản', 'số', 'thuật', 'tiền']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 20/20 (1.00); missing=[],baseline_dense
+q05,IT Helpdesk,Tài khoản bị khóa sau bao nhiêu lần đăng nhập sai?,"## 🔒 Khóa tài khoản sau bao nhiêu lần đăng nhập sai?
+
+Theo tài liệu nội bộ, tài khoản sẽ bị khóa sau **5 lần đăng nhập sai liên tiếp** [1].
+
+---
+
+### 📋 Cách xử lý khi bị khóa tài khoản:
+
+- **Cách 1:** Tự reset qua portal SSO tại `https://sso.company.internal/reset` [1]
+- **Cách 2:** Liên hệ **IT Helpdesk** qua số máy nhánh **ext. 9000** [1]
+
+---
+
+### 💡 Lưu ý thêm:
+
+- Mật khẩu mới sau khi reset sẽ được gửi qua **email công ty trong vòng 5 phút** [1]
+- Nhớ thay đổi mật khẩu định kỳ **mỗi 90 ngày** — hệ thống sẽ nhắc trước **7 ngày** khi sắp hết hạn [1]
+
+---
+
+Bạn có cần hỗ trợ thêm gì không? 😊",Tài khoản bị khóa sau 5 lần đăng nhập sai liên tiếp.,4,Grounded tokens: 81/98 (0.83),5,"Query keywords matched: 11/11 (1.00); matched=['bao', 'bị', 'khoản', 'khóa', 'lần', 'nhiêu', 'nhập', 'sai']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 11/11 (1.00); missing=[],baseline_dense
+q06,SLA,Escalation trong sự cố P1 diễn ra như thế nào?,"# 🚨 Quy trình Escalation trong Sự cố P1
+
+## 📋 Escalation tự động (SLA)
+
+Theo quy định SLA hiện hành [3]:
+
+- **Tự động escalate lên Senior Engineer** nếu không có phản hồi trong vòng **10 phút** kể từ khi ticket được tạo
+- **First response** bắt buộc trong **15 phút**
+- **Resolution** tối đa **4 giờ** [2]
+- **Thông báo stakeholder**: Ngay khi nhận ticket + **cập nhật mỗi 30 phút** cho đến khi resolve [3]
+
+---
+
+## 🔐 Escalation quyền hệ thống khẩn cấp (nếu cần)
+
+Trong trường hợp P1 yêu cầu thay đổi/cấp quyền hệ thống ngoài quy trình thông thường [1]:
+
+1. **On-call IT Admin** có thể cấp quyền tạm thời *(tối đa 24 giờ)* sau khi được **Tech Lead phê duyệt bằng lời**
+2. Sau **24 giờ**: phải có **ticket chính thức**, nếu không quyền sẽ **bị thu hồi tự động**
+3. Toàn bộ quyền tạm thời **bắt buộc ghi log** vào hệ thống **Security Audit**
+
+---
+
+> 💡 **Tóm tắt nhanh:** P1 được escalate tự động sau 10 phút không phản hồi → Senior Engineer tiếp nhận → Nếu cần quyền đặc biệt, Tech Lead phê duyệt → IT Admin cấp quyền tạm thời tối đa 24h và ghi log đầy đủ.",Ticket P1 tự động escalate lên Senior Engineer nếu không có phản hồi trong 10 phút sau khi tạo ticket.,4,Grounded tokens: 133/163 (0.82),3,"Query keywords matched: 4/9 (0.44); matched=['cố', 'escalation', 'p1', 'sự']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 15/15 (1.00); missing=[],baseline_dense
+q07,Access Control,Approval Matrix để cấp quyền hệ thống là tài liệu nào?,"## Approval Matrix để cấp quyền hệ thống
+
+Dựa trên tài liệu nội bộ, thông tin về **Approval Matrix** được quy định trong:
+
+> 📄 **`it/access-control-sop.md`** — *Section 2: Phân cấp quyền truy cập*
+
+---
+
+### Chi tiết Approval Matrix theo từng cấp độ [3]:
+
+| Level | Đối tượng áp dụng | Người phê duyệt | Thời gian xử lý |
+|---|---|---|---|
+| **Level 1** – Read Only | Nhân viên mới (30 ngày đầu) | Line Manager | 1 ngày làm việc |
+| **Level 2** – Standard Access | Nhân viên chính thức | Line Manager + IT Admin | 2 ngày làm việc |
+| **Level 3** – Elevated Access | Team Lead, Senior Engineer, Manager | Line Manager + IT Admin + IT Security | 3 ngày làm việc |
+| **Level 4** – Admin Access | DevOps, SRE, IT Admin | IT Manager + CISO | 5 ngày làm việc |
+
+> ⚠️ **Lưu ý:** Level 4 yêu cầu thêm **training bắt buộc về security policy** trước khi được cấp quyền. [3]
+
+---
+
+### Quy trình thực hiện yêu cầu cấp quyền [2]:
+- **Bước 1:** Tạo ticket trên **Jira** (project: `IT-ACCESS`)
+- **Bước 2:** Line Manager phê duyệt trong vòng **1 ngày làm việc**
+- **Bước 3:** IT Admin kiểm tra compliance và cấp quyền
+- **Bước 4:** IT Security review *(áp dụng với Level 3 & Level 4)*
+- **Bước 5:**",Tài liệu 'Approval Matrix for System Access' hiện tại có tên mới là 'Access Control SOP' (access-control-sop.md).,4,Grounded tokens: 138/165 (0.84),5,"Query keywords matched: 9/10 (0.90); matched=['approval', 'cấp', 'hệ', 'liệu', 'matrix', 'quyền', 'thống', 'tài']",5,Retrieved 1/1 expected sources,4,"Expected keywords covered: 10/13 (0.77); missing=['system', 'tên', 'tại']",baseline_dense
+q08,HR Policy,Nhân viên được làm remote tối đa mấy ngày mỗi tuần?,"## 📋 Chính sách Remote Work
+
+Theo tài liệu nội bộ, nhân viên được làm remote **tối đa 2 ngày/tuần** [1].
+
+### Điều kiện áp dụng:
+- ✅ Chỉ áp dụng cho nhân viên **đã qua probation period** (hết thử việc)
+- ✅ Phải được **Team Lead phê duyệt** lịch remote qua **HR Portal**
+- ❌ **Ngày onsite bắt buộc:** Thứ 3 và Thứ 5 theo lịch team
+
+### Yêu cầu kỹ thuật khi làm remote:
+- 🔒 Kết nối **VPN bắt buộc** khi truy cập hệ thống nội bộ
+- 📷 **Bật camera** trong các cuộc họp team
+
+---
+
+> 💡 **Lưu ý:** Nếu bạn cần hỗ trợ thêm hoặc muốn đăng ký lịch remote, vui lòng liên hệ HR qua:
+> - 🌐 HR Portal: https://hr.company.internal
+> - 📧 Email: hr@company.internal
+> - ☎️ Hotline: ext. 2000 *(Thứ 2 – Thứ 6, 8:30 – 17:30)* [3]","Nhân viên sau probation period có thể làm remote tối đa 2 ngày/tuần, với điều kiện được Team Lead phê duyệt.",4,Grounded tokens: 90/110 (0.82),5,"Query keywords matched: 8/10 (0.80); matched=['làm', 'ngày', 'nhân', 'remote', 'tuần', 'tối', 'viên', 'đa']",5,Retrieved 1/1 expected sources,5,"Expected keywords covered: 16/18 (0.89); missing=['sau', 'thể']",baseline_dense
+q09,Insufficient Context,ERR-403-AUTH là lỗi gì và cách xử lý?,"## ⚠️ Về mã lỗi ERR-403-AUTH
+
+Xin lỗi, hiện tại tôi **không có đủ dữ liệu từ tài liệu hệ thống** để trả lời câu hỏi này.
+
+Cụ thể, các tài liệu được trích xuất ([1], [2], [3]) đều thuộc phạm vi **quy trình cấp phép truy cập (Access Control SOP)** và **không chứa thông tin** về:
+- Định nghĩa mã lỗi `ERR-403-AUTH`
+- Nguyên nhân gây ra lỗi này
+- Các bước xử lý/troubleshooting tương ứng
+
+---
+
+### 💡 Gợi ý bước tiếp theo
+
+Bạn có thể thử các hướng sau để được hỗ trợ nhanh hơn:
+
+- 📋 **Tạo ticket Helpdesk** mô tả lỗi `ERR-403-AUTH`, kèm screenshot và thời điểm xảy ra
+- 👨‍💻 **Liên hệ trực tiếp IT Admin on-call** nếu đây là sự cố khẩn cấp ảnh hưởng đến công việc
+- 🔍 Kiểm tra xem lỗi có liên quan đến **quyền truy cập bị thiếu/hết hạn** không — nếu có, quy trình cấp quyền có thể được tham chiếu theo [2] và [3]
+
+Bạn có thể cung cấp thêm ngữ cảnh (hệ thống nào bị lỗi, vai trò của bạn) để tôi hỗ trợ tốt hơn nhé! 😊","Không tìm thấy thông tin về ERR-403-AUTH trong tài liệu hiện có. Đây có thể là lỗi liên quan đến xác thực (authentication), hãy liên hệ IT Helpdesk.",2,Grounded tokens: 56/157 (0.36),4,"Query keywords matched: 6/8 (0.75); matched=['403', 'auth', 'err', 'lý', 'lỗi', 'xử']",,No expected sources,4,"Expected keywords covered: 19/25 (0.76); missing=['authentication', 'hãy', 'thấy', 'thực', 'tìm', 'xác']",baseline_dense
+q10,Refund,"Nếu cần hoàn tiền khẩn cấp cho khách hàng VIP, quy trình có khác không?","## Quy trình hoàn tiền khẩn cấp cho khách hàng VIP
+
+Xin lỗi, **hiện tại tôi không có đủ dữ liệu từ tài liệu hệ thống để trả lời câu hỏi này.**
+
+Cụ thể, các tài liệu policy hiện có **không đề cập** đến:
+- Quy trình hoàn tiền riêng biệt dành cho khách hàng VIP
+- Cơ chế xử lý ""khẩn cấp"" (fast-track/priority refund) với SLA rút ngắn
+- Bất kỳ phân loại ưu tiên nào theo tier khách hàng
+
+---
+
+### 📋 Quy trình hoàn tiền **hiện hành** áp dụng chung:
+
+Theo tài liệu hiện có, tất cả yêu cầu hoàn tiền đều tuân theo quy trình chuẩn:
+
+- **Bước 1:** Khách hàng gửi ticket với category *""Refund Request""* [1]
+- **Bước 2:** CS Agent xem xét trong **1 ngày làm việc** [1]
+- **Bước 3:** Chuyển sang Finance Team nếu đủ điều kiện [1]
+- **Bước 4:** Finance Team xử lý trong **3–5 ngày làm việc** [1]
+
+---
+
+### 💡 Khuyến nghị:
+
+Nếu bạn cần xử lý hoàn tiền ưu tiên cho khách hàng VIP, tôi đề xuất:
+
+1. **Liên hệ trực tiếp Finance Team** để hỏi về khả năng ưu tiên xử lý
+2. **Escalate lên Team Leader / Manager** để được phê duyệt ngo","Tài liệu chính sách hoàn tiền không đề cập đến quy trình đặc biệt cho khách hàng VIP. Theo chính sách hiện hành, tất cả yêu cầu hoàn tiền đều theo cùng quy trình tiêu chuẩn trong 3-5 ngày làm việc.",3,Grounded tokens: 86/168 (0.51),5,"Query keywords matched: 11/12 (0.92); matched=['cấp', 'cần', 'hoàn', 'hàng', 'khách', 'không', 'khẩn', 'quy']",5,Retrieved 1/1 expected sources,4,"Expected keywords covered: 26/31 (0.84); missing=['chính', 'cùng', 'sách', 'tiêu', 'đặc']",baseline_dense
+q01,SLA,SLA xử lý ticket P1 là bao lâu?,"## ⏱️ SLA Xử Lý Ticket P1
+
+Dưới đây là thông tin SLA đầy đủ cho ticket **P1** theo tài liệu nội bộ:
+
+### 📋 Các mốc thời gian chính
+- **Phản hồi ban đầu (First Response):** 15 phút kể từ khi ticket được tạo
+- **Xử lý & khắc phục (Resolution):** **4 giờ**
+- **Escalation tự động:** Lên Senior Engineer nếu không có phản hồi trong **10 phút**
+- **Thông báo stakeholder:** Ngay khi nhận ticket, cập nhật **mỗi 30 phút** cho đến khi resolve [1]
+
+---
+
+### 🔄 Quy trình xử lý P1 (tóm tắt)
+- **Bước 1 – Tiếp nhận:** On-call engineer xác nhận severity trong **5 phút**
+- **Bước 2 – Thông báo:** Gửi ngay tới Slack `#incident-p1` và email `incident@company.internal`
+- **Bước 3 – Phân công:** Lead Engineer phân công trong **10 phút**
+- **Bước 4 – Xử lý:** Cập nhật tiến độ lên ticket **mỗi 30 phút**
+- **Bước 5 – Resolution:** Viết incident report trong vòng **24 giờ** sau khi khắc phục [2]
+
+---
+
+### 📌 Lưu ý phiên bản
+> SLA resolution P1 đã được **cập nhật từ 6 giờ → 4 giờ** kể từ phiên bản v2026.1 (15/01/2026) [3]
+
+---
+
+Bạn cần thêm thông tin về SLA",Ticket P1 có SLA phản hồi ban đầu 15 phút và thời gian xử lý (resolution) là 4 giờ.,5,Grounded tokens: 130/150 (0.87),4,"Query keywords matched: 5/7 (0.71); matched=['lý', 'p1', 'sla', 'ticket', 'xử']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 15/15 (1.00); missing=[],variant_hybrid_rerank
+q02,Refund,Khách hàng có thể yêu cầu hoàn tiền trong bao nhiêu ngày?,"## ⏱️ Thời Hạn Yêu Cầu Hoàn Tiền
+
+Theo chính sách hiện hành, khách hàng có thể yêu cầu hoàn tiền **trong vòng 7 ngày làm việc kể từ thời điểm xác nhận đơn hàng** [1][2].
+
+---
+
+### ✅ Điều Kiện Để Được Hoàn Tiền
+
+Ngoài thời hạn trên, yêu cầu cần đáp ứng **đồng thời** các điều kiện sau [1]:
+
+- 🔧 Sản phẩm bị lỗi do **nhà sản xuất** (không phải do người dùng)
+- 📦 Đơn hàng **chưa được sử dụng** hoặc **chưa bị mở seal**
+- 📅 Gửi yêu cầu **đúng trong thời hạn 7 ngày**
+
+---
+
+### ❌ Các Trường Hợp Ngoại Lệ (Không Được Hoàn Tiền)
+
+- Sản phẩm thuộc danh mục **hàng kỹ thuật số** (license key, subscription)
+- Đơn hàng đã áp dụng **mã giảm giá Flash Sale**
+- Sản phẩm đã được **kích hoạt hoặc đăng ký tài khoản** [2]
+
+---
+
+### 📋 Quy Trình Gửi Yêu Cầu
+
+1. Gửi ticket qua hệ thống nội bộ với category **""Refund Request""**
+2. CS Agent xem xét trong **1 ngày làm việc**
+3. Nếu đủ điều kiện → chuyển sang **Finance Team**
+4. Finance",Khách hàng có thể yêu cầu hoàn tiền trong vòng 7 ngày làm việc kể từ thời điểm xác nhận đơn hàng.,5,Grounded tokens: 131/147 (0.89),5,"Query keywords matched: 8/10 (0.80); matched=['cầu', 'hoàn', 'hàng', 'khách', 'ngày', 'thể', 'tiền', 'yêu']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 17/17 (1.00); missing=[],variant_hybrid_rerank
+q03,Access Control,Ai phải phê duyệt để cấp quyền Level 3?,"## Phê duyệt để cấp quyền Level 3
+
+Để được cấp **Level 3 — Elevated Access**, yêu cầu phải có **3 bên phê duyệt** theo thứ tự: [1]
+
+- ✅ **Line Manager** — phê duyệt đầu tiên
+- ✅ **IT Admin** — kiểm tra compliance
+- ✅ **IT Security** — review bảo mật
+
+---
+
+### Quy trình thực hiện [2]
+
+1. Nhân viên tạo **Access Request ticket** trên Jira (project: `IT-ACCESS`)
+2. **Line Manager** phê duyệt trong vòng **1 ngày làm việc**
+3. **IT Admin** kiểm tra compliance và xử lý cấp quyền
+4. **IT Security** thực hiện review (bắt buộc với Level 3)
+5. Nhân viên nhận **thông báo qua email** khi quyền được cấp
+
+> ⏱️ **Thời gian xử lý tổng:** 3 ngày làm việc [1]
+
+---
+
+> 💡 **Lưu ý:** Level 3 áp dụng cho các vị trí **Team Lead, Senior Engineer và Manager**. Nếu bạn cần hỗ trợ tạo ticket, hãy liên hệ IT Helpdesk nhé!","Level 3 (Elevated Access) cần phê duyệt từ Line Manager, IT Admin, và IT Security.",4,Grounded tokens: 94/116 (0.81),5,"Query keywords matched: 7/8 (0.88); matched=['cấp', 'duyệt', 'level', 'phê', 'phải', 'quyền', 'để']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 11/11 (1.00); missing=[],variant_hybrid_rerank
+q04,Refund,Sản phẩm kỹ thuật số có được hoàn tiền không?,"## Chính sách hoàn tiền cho Sản phẩm Kỹ thuật số
+
+Rất tiếc, **sản phẩm kỹ thuật số thuộc diện KHÔNG được hoàn tiền** theo chính sách hiện hành của công ty.
+
+---
+
+### ❌ Các trường hợp ngoại lệ không được hoàn tiền bao gồm: [1]
+
+- **Sản phẩm thuộc danh mục hàng kỹ thuật số** (license key, subscription)
+- Đơn hàng đã áp dụng mã giảm giá đặc biệt (Flash Sale)
+- Sản phẩm **đã được kích hoạt hoặc đăng ký tài khoản**
+
+---
+
+### ✅ Trường hợp ngoại lệ có thể xem xét:
+
+Mặc dù sản phẩm kỹ thuật số thường không được hoàn tiền, nếu sản phẩm **bị lỗi do nhà sản xuất** (không phải do người dùng), bạn vẫn có thể gửi yêu cầu xem xét với điều kiện: [2]
+
+- Yêu cầu được gửi **trong vòng 7 ngày làm việc** kể từ ngày xác nhận đơn hàng
+- Sản phẩm **chưa được sử dụng hoặc chưa bị mở seal**
+
+---
+
+### 💡 Gợi ý:
+
+Nếu bạn gặp vấn đề với sản phẩm kỹ thuật số, hãy **liên hệ bộ phận hỗ trợ** để được xem xét từng trường hợp cụ thể. Trong một số trường hợp đủ điều","Không. Theo chính sách hoàn tiền, sản phẩm thuộc danh mục hàng kỹ thuật số (license key, subscription) là ngoại lệ không được hoàn tiền.",4,Grounded tokens: 127/165 (0.77),5,"Query keywords matched: 8/8 (1.00); matched=['hoàn', 'không', 'kỹ', 'phẩm', 'sản', 'số', 'thuật', 'tiền']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 20/20 (1.00); missing=[],variant_hybrid_rerank
+q05,IT Helpdesk,Tài khoản bị khóa sau bao nhiêu lần đăng nhập sai?,"## 🔐 Chính sách khóa tài khoản
+
+Theo tài liệu nội bộ, tài khoản của bạn sẽ bị khóa trong trường hợp sau:
+
+- **Số lần đăng nhập sai tối đa:** **5 lần liên tiếp** → tài khoản bị khóa tự động [1]
+
+---
+
+## 🛠️ Cách mở khóa tài khoản
+
+Bạn có **2 lựa chọn** để xử lý:
+
+- **Tự xử lý:** Truy cập portal SSO tại `https://sso.company.internal/reset` để tự reset [1]
+- **Liên hệ hỗ trợ:** Gọi IT Helpdesk qua **ext. 9000** để được hỗ trợ mở khóa [1]
+
+---
+
+> 💡 **Mẹo nhỏ:** Nếu bạn không chắc mật khẩu hiện tại, hãy chủ động reset trước khi chạm ngưỡng 5 lần để tránh bị khóa tài khoản nhé!
+
+Bạn có cần hỗ trợ thêm gì không? 😊",Tài khoản bị khóa sau 5 lần đăng nhập sai liên tiếp.,3,Grounded tokens: 68/108 (0.63),5,"Query keywords matched: 9/11 (0.82); matched=['bị', 'khoản', 'khóa', 'lần', 'nhập', 'sai', 'sau', 'tài']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 11/11 (1.00); missing=[],variant_hybrid_rerank
+q06,SLA,Escalation trong sự cố P1 diễn ra như thế nào?,"# 🚨 Escalation trong Sự cố P1
+
+Dưới đây là toàn bộ quy trình escalation áp dụng cho sự cố P1, tổng hợp từ tài liệu nội bộ:
+
+---
+
+## ⏱️ Escalation tự động theo SLA
+
+- **Tự động escalate lên Senior Engineer** nếu không có phản hồi trong vòng **10 phút** kể từ khi ticket được tạo [3]
+- **First response** bắt buộc trong **15 phút** [3]
+- **Cập nhật stakeholder** ngay khi nhận ticket, sau đó **mỗi 30 phút** cho đến khi resolve [3]
+- **Thời hạn resolution tối đa: 4 giờ** [3]
+
+---
+
+## 🔄 Quy trình xử lý & escalation thủ công
+
+| Bước | Hành động | Thời hạn |
+|------|-----------|----------|
+| 1 | On-call engineer xác nhận severity | 5 phút |
+| 2 | Gửi thông báo tới **Slack #incident-p1** và **email incident@company.internal** | Ngay lập tức |
+| 3 | Lead Engineer phân công engineer xử lý | 10 phút |
+| 4 | Engineer cập nhật tiến độ lên ticket; **escalate ngay nếu cần hỗ trợ thêm** | Mỗi 30 phút |
+| 5 | Viết incident report sau khi khắc phục | Trong 24 giờ |
+
+[2]
+
+---
+
+## 🔐 Escalation đặc biệt – Cấp quyền khẩn cấp
+
+Trong trường hợp P1 cần thay đổi/cấp quyền hệ thống",Ticket P1 tự động escalate lên Senior Engineer nếu không có phản hồi trong 10 phút sau khi tạo ticket.,4,Grounded tokens: 125/148 (0.84),3,"Query keywords matched: 4/9 (0.44); matched=['cố', 'escalation', 'p1', 'sự']",5,Retrieved 1/1 expected sources,5,Expected keywords covered: 15/15 (1.00); missing=[],variant_hybrid_rerank
+q07,Access Control,Approval Matrix để cấp quyền hệ thống là tài liệu nào?,"## Về Approval Matrix để cấp quyền hệ thống
+
+Xin lỗi, hiện tại tôi không có đủ dữ liệu từ tài liệu hệ thống để trả lời câu hỏi này.
+
+Cụ thể, các tài liệu hiện có trong context chỉ đề cập đến:
+
+- **Quy trình yêu cầu cấp quyền** (Access Request flow trên Jira) [2]
+- **Quy trình escalation khẩn cấp** khi cần thay đổi quyền ngoài quy trình thông thường [3]
+
+Tuy nhiên, **không có tài liệu nào đề cập cụ thể đến tên hoặc nội dung của Approval Matrix** dùng để cấp quyền hệ thống.
+
+---
+
+### 💡 Gợi ý bước tiếp theo:
+
+- Bạn có thể liên hệ trực tiếp **IT Admin** hoặc **IT Security team** để được cung cấp tài liệu Approval Matrix chính xác.
+- Hoặc tạo ticket trên **Jira (project IT-ACCESS)** để yêu cầu hỗ trợ tra cứu tài liệu này [2].
+
+Tôi rất tiếc vì chưa thể cung cấp thông tin đầy đủ hơn. Bạn có câu hỏi nào khác không? 😊",Tài liệu 'Approval Matrix for System Access' hiện tại có tên mới là 'Access Control SOP' (access-control-sop.md).,3,Grounded tokens: 82/145 (0.57),5,"Query keywords matched: 10/10 (1.00); matched=['approval', 'cấp', 'hệ', 'liệu', 'matrix', 'nào', 'quyền', 'thống']",5,Retrieved 1/1 expected sources,3,"Expected keywords covered: 8/13 (0.62); missing=['control', 'md', 'mới', 'sop', 'system']",variant_hybrid_rerank
+q08,HR Policy,Nhân viên được làm remote tối đa mấy ngày mỗi tuần?,"## Chính sách Remote Work 🏠
+
+Theo tài liệu nội bộ, nhân viên được làm remote **tối đa 2 ngày/tuần** [1].
+
+### Điều kiện áp dụng:
+- ✅ Chỉ áp dụng cho nhân viên **đã qua probation period** (hết thử việc)
+- ✅ Phải được **Team Lead phê duyệt** lịch remote qua **HR Portal**
+
+### Lưu ý quan trọng:
+- 📅 **Ngày onsite bắt buộc:** Thứ 3 và Thứ 5 theo lịch team *(không được chọn làm ngày remote)*
+- 🔒 Khi làm remote, **bắt buộc kết nối VPN** khi truy cập hệ thống nội bộ
+- 📷 **Bật camera** trong các cuộc họp team
+
+---
+> 📄 Nguồn: [1] `hr/leave-policy-2026.pdf` — Phần 4: Remote Work Policy
+
+Bạn cần hỗ trợ thêm về quy trình phê duyệt lịch remote hoặc vấn đề kỹ thuật VPN không? 😊","Nhân viên sau probation period có thể làm remote tối đa 2 ngày/tuần, với điều kiện được Team Lead phê duyệt.",4,Grounded tokens: 81/107 (0.76),5,"Query keywords matched: 8/10 (0.80); matched=['làm', 'ngày', 'nhân', 'remote', 'tuần', 'tối', 'viên', 'đa']",5,Retrieved 1/1 expected sources,5,"Expected keywords covered: 16/18 (0.89); missing=['sau', 'thể']",variant_hybrid_rerank
+q09,Insufficient Context,ERR-403-AUTH là lỗi gì và cách xử lý?,"## ❌ Lỗi ERR-403-AUTH
+
+Xin lỗi, **hiện tại tôi không có đủ dữ liệu từ tài liệu hệ thống để trả lời câu hỏi này.**
+
+Cụ thể, các tài liệu được trích xuất ([1], [2], [3]) không chứa thông tin về mã lỗi **ERR-403-AUTH** cũng như hướng dẫn xử lý tương ứng.
+
+---
+
+### 💡 Gợi ý bước tiếp theo
+
+Bạn có thể thử các hướng sau để được hỗ trợ nhanh hơn:
+
+- 📞 **Liên hệ IT Helpdesk** qua ext. **9000** để được tư vấn trực tiếp [1]
+- 🔐 Nếu lỗi liên quan đến **quyền truy cập hệ thống**, bạn có thể tạo ticket **Access Request** trên **Jira (project IT-ACCESS)** theo quy trình chuẩn [3]
+- 🔑 Nếu nghi ngờ lỗi do **tài khoản/mật khẩu**, thử reset tại: `https://sso.company.internal/reset` [1]
+
+Rất mong được hỗ trợ bạn thêm! 😊","Không tìm thấy thông tin về ERR-403-AUTH trong tài liệu hiện có. Đây có thể là lỗi liên quan đến xác thực (authentication), hãy liên hệ IT Helpdesk.",2,Grounded tokens: 52/118 (0.44),4,"Query keywords matched: 6/8 (0.75); matched=['403', 'auth', 'err', 'lý', 'lỗi', 'xử']",,No expected sources,4,"Expected keywords covered: 18/25 (0.72); missing=['authentication', 'hãy', 'thấy', 'thực', 'tìm', 'xác', 'đây']",variant_hybrid_rerank
+q10,Refund,"Nếu cần hoàn tiền khẩn cấp cho khách hàng VIP, quy trình có khác không?","## Quy trình hoàn tiền khẩn cấp cho khách hàng VIP
+
+Xin lỗi, hiện tại tôi **không có đủ dữ liệu từ tài liệu hệ thống** để trả lời câu hỏi này.
+
+Cụ thể, các tài liệu policy hiện có (**refund-v4.pdf**) chỉ mô tả quy trình hoàn tiền **tiêu chuẩn** áp dụng chung, bao gồm:
+
+- **Bước xử lý** từ CS Agent → Finance Team [1]
+- **Thời gian xử lý** 3–5 ngày làm việc [1]
+- **Hình thức hoàn tiền** qua phương thức gốc hoặc store credit [2]
+- **Điều kiện đủ điều kiện** hoàn tiền [3]
+
+Tuy nhiên, **không có điều khoản nào** đề cập đến:
+- ❌ Định nghĩa hoặc phân loại ""khách hàng VIP""
+- ❌ Quy trình hoàn tiền ưu tiên/khẩn cấp riêng biệt
+- ❌ SLA rút ngắn dành cho nhóm khách hàng đặc biệt
+
+---
+
+### 💡 Gợi ý tiếp theo
+
+Bạn có thể:
+1. **Liên hệ trực tiếp Finance Team hoặc Team Lead** để xác nhận có chính sách ngoại lệ nào áp dụng không.
+2. **Kiểm tra tài liệu VIP Policy** (nếu tồn tại) — hiện tôi chưa có tài liệu này trong hệ thống.
+3. **Escalate ticket** lên cấp qu","Tài liệu chính sách hoàn tiền không đề cập đến quy trình đặc biệt cho khách hàng VIP. Theo chính sách hiện hành, tất cả yêu cầu hoàn tiền đều theo cùng quy trình tiêu chuẩn trong 3-5 ngày làm việc.",2,Grounded tokens: 71/163 (0.44),5,"Query keywords matched: 10/12 (0.83); matched=['cấp', 'hoàn', 'hàng', 'khách', 'không', 'khẩn', 'quy', 'tiền']",5,Retrieved 1/1 expected sources,4,"Expected keywords covered: 24/31 (0.77); missing=['cùng', 'cả', 'cầu', 'hành', 'tất', 'yêu', 'đều']",variant_hybrid_rerank
