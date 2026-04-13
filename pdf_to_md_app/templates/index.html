@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Markdown Converter</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#3B82F6',
+                        cta: '#F97316',
+                        background: '#F8FAFC',
+                        foreground: '#1E293B',
+                    },
+                    boxShadow: {
+                        'md': '0 4px 6px rgba(0,0,0,0.1)',
+                        'lg': '0 10px 15px rgba(0,0,0,0.1)',
+                        'xl': '0 20px 25px rgba(0,0,0,0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Smooth light/dark transitions */
+        body { 
+            transition: background-color 0.3s ease, color 0.3s ease; 
+        }
+        
+        /* Glassmorphism Styles based on MASTER.md */
+        .glass-card {
+          background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: var(--tw-shadow-md);
+        }
+
+        .dark .glass-card {
+          background: rgba(30, 41, 59, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(100, 116, 139, 0.35);
+            box-shadow: var(--tw-shadow-lg);
+        }
+
+        .btn-cta {
+          background-color: #F97316;
+          color: #ffffff;
+            transition: all 200ms ease;
+        }
+        .btn-cta:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .feature-card {
+            transition: all 200ms ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--tw-shadow-lg);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
+          }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground dark:bg-slate-900 dark:text-slate-100 min-h-screen relative font-sans antialiased">
+    <!-- Floating Navbar (Glassmorphism) -->
+      <nav class="fixed top-4 left-4 right-4 z-50 max-w-7xl mx-auto rounded-2xl glass-card px-6 py-4 flex justify-between items-center transition-all duration-300">
+        <div class="flex items-center space-x-2">
+            <i data-lucide="file-text" class="w-6 h-6 text-primary dark:text-secondary"></i>
+            <span class="font-bold text-lg tracking-tight">DocParse</span>
+        </div>
+        <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-800 transition-colors duration-200 cursor-pointer" aria-label="Toggle theme">
+            <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+        </button>
+    </nav>
+
+    <!-- Main Content: Pattern = Hero + Features + CTA -->
+    <main class="pt-32 pb-16 px-4 max-w-5xl mx-auto w-full flex flex-col items-center">
+        
+        <!-- SECTION 1: HERO -->
+        <section class="text-center mb-16 space-y-6 w-full">
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-secondary text-sm font-semibold mb-4">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span>Hybrid AI Parsing Technology</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground dark:text-white leading-tight">
+                Transform PDFs into <br class="hidden md:block" /> 
+                <span class="text-primary dark:text-secondary">Clean Markdown</span>
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto text-lg">
+                Extract text, maintain layouts, and format tables flawlessly from complex PDF documents using the power of hybrid parsing.
+            </p>
+        </section>
+
+        <!-- SECTION 2: FEATURES -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-16">
+            <div class="feature-card glass-card rounded-xl p-6 flex flex-col items-start cursor-pointer">
+                <div class="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-lg mb-4">
+                    <i data-lucide="layout-template" class="w-6 h-6 text-primary dark:text-secondary"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">Layout Preservation</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Intelligently detects headings, lists, and multi-column designs.</p>
+            </div>
+            <div class="feature-card glass-card rounded-xl p-6 flex flex-col items-start cursor-pointer">
+                <div class="p-3 bg-orange-100 dark:bg-orange-900/40 rounded-lg mb-4">
+                    <i data-lucide="table" class="w-6 h-6 text-cta"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">Smart Tables</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Automatically extracts and formats complex tables directly into Markdown.</p>
+            </div>
+            <div class="feature-card glass-card rounded-xl p-6 flex flex-col items-start cursor-pointer">
+                <div class="p-3 bg-green-100 dark:bg-green-900/40 rounded-lg mb-4">
+                    <i data-lucide="code-2" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
+                </div>
+                <h3 class="font-bold text-lg mb-2">LLM Powered</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Post-processes raw structures into highly readable standard Markdown.</p>
+            </div>
+        </section>
+
+        <!-- SECTION 3: CTA (Upload Area) -->
+        <section class="w-full glass-card rounded-2xl p-8 mb-8 shadow-xl">
+            <h2 class="text-xl font-bold mb-4 flex items-center space-x-2">
+                <i data-lucide="upload" class="w-5 h-5 text-primary"></i>
+                <span>Upload Document</span>
+            </h2>
+            
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-cta dark:hover:border-cta transition-colors duration-200 bg-white/50 dark:bg-slate-800/50 relative">
+                <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf">
+                <i data-lucide="file-up" class="w-12 h-12 text-slate-400 mb-4 transition-transform group-hover:-translate-y-1"></i>
+                <h3 class="text-lg font-semibold mb-1 text-foreground dark:text-slate-200">Drag & drop or browse</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Support PDF up to 20MB file size</p>
+                <div id="file-name-display" class="mt-4 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-secondary rounded-md font-medium text-sm hidden"></div>
+            </div>
+
+            <!-- CTA Button -->
+            <button id="convert-btn" disabled class="w-full mt-6 py-3 px-4 btn-cta disabled:bg-opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg flex items-center justify-center space-x-2 cursor-pointer shadow-md">
+                <i data-lucide="zap" class="w-5 h-5"></i>
+                <span>Process with AI</span>
+            </button>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden mt-6 flex flex-col items-center justify-center space-y-3 py-8 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <i data-lucide="loader-2" class="w-8 h-8 text-primary animate-spin"></i>
+                <p class="text-sm font-medium text-slate-600 dark:text-slate-300 animate-pulse">Running Hybrid AI Engine... This may take a minute.</p>
+            </div>
+        </section>
+
+        <!-- Result Area -->
+        <section id="result-section" class="w-full hidden flex-col transition-all duration-300">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold flex items-center space-x-2">
+                    <i data-lucide="check-circle-2" class="w-5 h-5 text-green-500"></i>
+                    <span>Generated Markdown</span>
+                </h3>
+                <button id="copy-btn" class="text-sm px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-foreground dark:text-slate-200 rounded-lg transition-colors flex items-center space-x-2 cursor-pointer font-semibold">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>Copy to clipboard</span>
+                </button>
+            </div>
+            <div class="glass-card rounded-xl overflow-hidden p-0 relative shadow-lg">
+                <textarea id="md-output" readonly class="w-full h-96 p-6 bg-transparent border-0 focus:ring-0 resize-none text-sm font-mono text-slate-800 dark:text-slate-200 outline-none block"></textarea>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Theme Toggle Implementation
+        const html = document.documentElement;
+        const themeBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        updateTheme();
+
+        themeBtn.addEventListener('click', () => {
+            isDark = !isDark;
+            updateTheme();
+        });
+
+        function updateTheme() {
+            if(isDark) {
+                html.classList.add('dark');
+                html.classList.remove('light');
+                themeIcon.setAttribute('data-lucide', 'sun');
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                themeIcon.setAttribute('data-lucide', 'moon');
+            }
+            lucide.createIcons();
+        }
+
+        // File Upload Logic
+        const fileInput = document.getElementById('file-input');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const convertBtn = document.getElementById('convert-btn');
+        const dropZone = document.getElementById('drop-zone');
+        let currentFile = null;
+
+        fileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) {
+                currentFile = e.target.files[0];
+                if(currentFile.name.endsWith('.pdf')) {
+                    fileNameDisplay.textContent = currentFile.name;
+                    fileNameDisplay.classList.remove('hidden');
+                    convertBtn.removeAttribute('disabled');
+                    dropZone.classList.add('border-primary');
+                } else {
+                    alert('Invalid file format. Please select a PDF file.');
+                    resetFile();
+                }
+            }
+        });
+
+        function resetFile() {
+            currentFile = null;
+            fileInput.value = '';
+            fileNameDisplay.textContent = '';
+            fileNameDisplay.classList.add('hidden');
+            convertBtn.setAttribute('disabled', 'true');
+            dropZone.classList.remove('border-primary');
+        }
+
+        // Convert Action
+        const loadingState = document.getElementById('loading-state');
+        const resultSection = document.getElementById('result-section');
+        const mdOutput = document.getElementById('md-output');
+        const copyBtn = document.getElementById('copy-btn');
+
+        convertBtn.addEventListener('click', async () => {
+            if(!currentFile) return;
+
+            convertBtn.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if(!response.ok) {
+                    throw new Error(data.error || 'Conversion process failed.');
+                }
+
+                mdOutput.value = data.markdown;
+                resultSection.classList.remove('hidden');
+                resultSection.classList.add('flex');
+                
+                // Scroll to result smoothly
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                convertBtn.classList.remove('hidden');
+                loadingState.classList.add('hidden');
+            }
+        });
+
+        // Copy Clipboard Action
+        copyBtn.addEventListener('click', () => {
+            mdOutput.select();
+            document.execCommand('copy');
+            const originalHtml = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Copied!</span>`;
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

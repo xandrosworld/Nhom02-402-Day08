@@ -1,5 +1,10 @@
 # Environment
 .env
+.venv/
+venv/
+env/
+ENV/
+.env/
 
 # Vector store (generated, large)
 chroma_db/
