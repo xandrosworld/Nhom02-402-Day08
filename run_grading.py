@@ -16,17 +16,24 @@ Lưu ý:
 """
 
 import json
+import sys
 from pathlib import Path
 from datetime import datetime
 from rag_answer import rag_answer
+
+# HNK: Tăng cường hiển thị console utf-8 (Windows)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # HNK: Cấu hình đường dẫn
 GRADING_QUESTIONS_PATH = Path(__file__).parent / "data" / "grading_questions.json"
 LOG_OUTPUT_PATH = Path(__file__).parent / "logs" / "grading_run.json"
 
-# HNK: Dùng cấu hình tốt nhất của nhóm (hybrid sau khi Tùng Anh xong Sprint 3)
-# Nếu hybrid chưa xong → dùng "dense"
+# HNK: Dùng cấu hình tốt nhất của nhóm (hybrid, có rerank)
 RETRIEVAL_MODE = "hybrid"
+USE_RERANK = True
+TOP_K_SEARCH = 15
+TOP_K_SELECT = 3
 
 
 def run_grading():
@@ -59,8 +66,12 @@ def run_grading():
             result = rag_answer(
                 query=question,
                 retrieval_mode=RETRIEVAL_MODE,
+                use_rerank=USE_RERANK,
+                top_k_search=TOP_K_SEARCH,
+                top_k_select=TOP_K_SELECT,
                 verbose=False,
             )
+            # TUYỆT ĐỐI CHỈ DÙNG ĐÚNG 7 FIELDS THEO FORMAT SCORING.md
             entry = {
                 "id": qid,
                 "question": question,
@@ -88,10 +99,10 @@ def run_grading():
 
         log.append(entry)
 
-    # Lưu log
-    LOG_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOG_OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(log, f, ensure_ascii=False, indent=2)
+        # HNK: Lưu log đè sau mỗi câu hỏi để tránh mất trắng kết quả nếu crash dọc đường
+        LOG_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(LOG_OUTPUT_PATH, "w", encoding="utf-8") as f:
+            json.dump(log, f, ensure_ascii=False, indent=2)
 
     print(f"\n{'='*50}")
     print(f"✅ Hoàn thành! {len(log)} câu đã chạy")

@@ -1,192 +1,298 @@
-"""
-preprocess_pdf.py — Feature: PDF → Markdown (Hoàng Nam # PLN)
-==============================================================
-Mục tiêu:
-  Gọi AI (Gemini Vision hoặc GPT-4o Vision) để convert file PDF
-  sang Markdown có cấu trúc trước khi đưa vào index.py.
+"""PDF to Markdown utility with both CLI and Web modes. - Phạm Lê Hoàng Nam
 
-Tại sao cần:
-  - PDF raw extract mất cấu trúc (heading, bảng, bullet)
-  - Markdown giữ được heading → chunking theo section tốt hơn
-  - AI Vision đọc được cả bảng, hình, layout phức tạp
+Features:
+1) CLI mode: convert one PDF (local path or URL) or all PDFs in a folder.
+2) Web mode: upload PDF from browser and render Markdown in the UI.
 
-Output:
-  - Mỗi file PDF → 1 file .md trong data/docs/markdown/
-  - index.py đọc .md thay vì .txt
-
-Usage:
-  python preprocess_pdf.py                      # Convert tất cả PDF trong data/pdf/
-  python preprocess_pdf.py --file data/pdf/x.pdf  # Convert 1 file
+Examples:
+  python preprocess_pdf.py --file "D:/docs/policy.pdf"
+  python preprocess_pdf.py --file "https://example.com/policy.pdf"
+  python preprocess_pdf.py --serve
 """
 
-import os
 import argparse
+import os
+import tempfile
 from pathlib import Path
-from dotenv import load_dotenv
+from urllib.parse import urlparse
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
-# =============================================================================
-# CẤU HÌNH
-# =============================================================================
-
-PDF_INPUT_DIR  = Path(__file__).parent / "data" / "pdf"       # Thư mục chứa PDF gốc
-MD_OUTPUT_DIR  = Path(__file__).parent / "data" / "docs"      # Output Markdown (index.py đọc từ đây)
-
-PROVIDER = os.getenv("LLM_PROVIDER", "gemini")   # "gemini" hoặc "openai"
-
-
-# =============================================================================
-# STEP 1: ĐỌC PDF → BASE64 (để gửi cho Vision model)
-# =============================================================================
-
-def pdf_to_images_base64(pdf_path: Path):
-    """
-    Convert PDF sang list base64 images (mỗi trang 1 ảnh).
-
-    TODO (PLN):
-    Cài: pip install pdf2image pillow
-    Cần poppler:
-      - Windows: tải từ https://github.com/oschwartz10612/poppler-windows/releases
-      - Mac: brew install poppler
-
-    from pdf2image import convert_from_path
-    import base64, io
-
-    pages = convert_from_path(str(pdf_path), dpi=150)
-    result = []
-    for page in pages:
-        buffer = io.BytesIO()
-        page.save(buffer, format="PNG")
-        b64 = base64.b64encode(buffer.getvalue()).decode()
-        result.append(b64)
-    return result
-    """
-    raise NotImplementedError("TODO (PLN): Implement pdf_to_images_base64()")
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR / "pdf_to_md_app" / ".env")
 
 
 # =============================================================================
-# STEP 2: GỌI AI VISION → MARKDOWN
+# CONFIG
 # =============================================================================
 
-def call_vision_gemini(images_b64: list, filename: str) -> str:
-    """
-    Gọi Gemini Vision để convert list ảnh PDF → Markdown.
+PDF_INPUT_DIR = ROOT_DIR / "data" / "pdf"
+MD_OUTPUT_DIR = ROOT_DIR / "docs" / "markdown"
+TEMPLATE_DIR = ROOT_DIR / "pdf_to_md_app" / "templates"
 
-    TODO (PLN):
-    import google.generativeai as genai
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
-    parts = []
-    for b64 in images_b64:
-        parts.append({"inline_data": {"mime_type": "image/png", "data": b64}})
-
-    parts.append({"text": VISION_PROMPT.format(filename=filename)})
-    response = model.generate_content(parts)
-    return response.text
-    """
-    raise NotImplementedError("TODO (PLN): Implement call_vision_gemini()")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", os.getenv("LLM_MODEL", "claude-sonnet-4-6"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
 
-def call_vision_openai(images_b64: list, filename: str) -> str:
-    """
-    Gọi GPT-4o Vision để convert list ảnh PDF → Markdown.
+# =============================================================================
+# CORE CONVERTER LOGIC (migrated from pdf_to_md_app/converter.py)
+# =============================================================================
 
-    TODO (PLN):
+def _openai_client():
     from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    content = [{"type": "text", "text": VISION_PROMPT.format(filename=filename)}]
-    for b64 in images_b64:
-        content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/png;base64,{b64}"}
-        })
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("Thiếu OPENAI_API_KEY trong môi trường (.env).")
+    return OpenAI(api_key=api_key)
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": content}],
-        max_tokens=4096,
+
+def _anthropic_client():
+    from anthropic import Anthropic
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("Thiếu ANTHROPIC_API_KEY trong môi trường (.env).")
+    return Anthropic(api_key=api_key)
+
+
+def extract_elements(file_path: Path):
+    from unstructured.partition.pdf import partition_pdf
+
+    return partition_pdf(filename=str(file_path), strategy="fast")
+
+
+def elements_to_text(elements) -> str:
+    texts = []
+    for el in elements:
+        text = el.text.strip() if getattr(el, "text", None) else ""
+        if not text:
+            continue
+
+        category = getattr(el, "category", "")
+        if category == "Title":
+            texts.append(f"# {text}")
+        elif category == "ListItem":
+            texts.append(f"- {text}")
+        else:
+            texts.append(text)
+
+    return "\n".join(texts)
+
+
+def chunk_text(text: str, max_tokens: int = 1500) -> list[str]:
+    import tiktoken
+
+    try:
+        encoder = tiktoken.encoding_for_model(OPENAI_MODEL)
+    except KeyError:
+        encoder = tiktoken.get_encoding("cl100k_base")
+
+    tokens = encoder.encode(text)
+    return [encoder.decode(tokens[i : i + max_tokens]) for i in range(0, len(tokens), max_tokens)]
+
+
+def format_markdown(chunk: str) -> str:
+    prompt = f"""
+Convert the following content into clean Markdown.
+
+Requirements:
+- Keep headings (#, ##, ###)
+- Convert lists properly
+- Format tables into Markdown tables
+- Preserve code blocks using ```
+- Preserve math using LaTeX ($...$ or $$...$$)
+- Keep links and references
+- DO NOT hallucinate
+
+Content:
+{chunk}
+"""
+
+    # Ưu tiên Anthropic trước; nếu thiếu key hoặc gọi lỗi thì fallback sang OpenAI.
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key:
+        try:
+            response = _anthropic_client().messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=4000,
+                temperature=0,
+                system="You are a Markdown formatter.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            parts = []
+            for block in response.content:
+                text = getattr(block, "text", "")
+                if text:
+                    parts.append(text)
+            result = "\n".join(parts).strip()
+            if result:
+                return result
+        except Exception as exc:
+            print(f"Anthropic failed, fallback to OpenAI: {exc}")
+
+    response = _openai_client().chat.completions.create(
+        model=OPENAI_MODEL,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "You are a Markdown formatter."},
+            {"role": "user", "content": prompt},
+        ],
     )
-    return response.choices[0].message.content
-    """
-    raise NotImplementedError("TODO (PLN): Implement call_vision_openai()")
+    return response.choices[0].message.content or ""
 
 
-VISION_PROMPT = """Convert this document page to clean Markdown.
-Preserve all headings (use ##, ###), bullet points, tables, and numbered lists.
-Keep all policy details, dates, numbers exactly as written.
-Add metadata header at the top:
-Source: {filename}
----
-Then the Markdown content below.
-Do not add any commentary or explanation."""
+def pdf_to_markdown_text(file_path: Path) -> str:
+    elements = extract_elements(file_path)
+    text = elements_to_text(elements)
+    chunks = chunk_text(text)
+
+    md_parts = [format_markdown(chunk) for chunk in chunks]
+    return "\n\n".join(md_parts).strip()
 
 
 # =============================================================================
-# STEP 3: PIPELINE CHÍNH
+# FILE HELPERS
 # =============================================================================
 
-def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path = MD_OUTPUT_DIR) -> Path:
-    """
-    Pipeline: PDF file → Markdown file.
-
-    TODO (PLN):
-    1. Gọi pdf_to_images_base64() để convert PDF → images
-    2. Gọi call_vision_gemini() hoặc call_vision_openai() tuỳ PROVIDER
-    3. Lưu kết quả vào output_dir / [filename].md
-    4. Return path của file .md đã tạo
-    """
-    print(f"Converting: {pdf_path.name}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / (pdf_path.stem + ".md")
-
-    # TODO (PLN): Implement
-    raise NotImplementedError("TODO (PLN): Implement convert_pdf_to_markdown()")
-
-    return output_path
+def _is_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
-def convert_all_pdfs(input_dir: Path = PDF_INPUT_DIR, output_dir: Path = MD_OUTPUT_DIR):
-    """
-    Convert tất cả PDF trong input_dir → Markdown trong output_dir.
-    """
-    pdf_files = list(input_dir.glob("*.pdf"))
+def _download_pdf(url: str) -> Path:
+    import requests
+
+    parsed = urlparse(url)
+    filename = Path(parsed.path).name or "downloaded.pdf"
+    if not filename.lower().endswith(".pdf"):
+        filename = f"{filename}.pdf"
+
+    temp_path = Path(tempfile.gettempdir()) / filename
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+
+    temp_path.write_bytes(response.content)
+    return temp_path
+
+
+def _resolve_pdf_input(pdf_input: str) -> tuple[Path, bool]:
+    if _is_url(pdf_input):
+        return _download_pdf(pdf_input), True
+
+    path = Path(pdf_input)
+    if not path.exists():
+        raise FileNotFoundError(f"File không tồn tại: {pdf_input}")
+    return path, False
+
+
+# =============================================================================
+# PIPELINE
+# =============================================================================
+
+def convert_pdf_to_markdown(pdf_input: str, output_dir: Path = MD_OUTPUT_DIR) -> Path:
+    pdf_path, is_temp_download = _resolve_pdf_input(pdf_input)
+    try:
+        print(f"Converting: {pdf_path.name}")
+        markdown_content = pdf_to_markdown_text(pdf_path)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"{pdf_path.stem}.md"
+        output_path.write_text(markdown_content, encoding="utf-8")
+
+        print(f"Saved: {output_path}")
+        return output_path
+    finally:
+        if is_temp_download and pdf_path.exists():
+            pdf_path.unlink(missing_ok=True)
+
+
+def convert_all_pdfs(input_dir: Path = PDF_INPUT_DIR, output_dir: Path = MD_OUTPUT_DIR) -> None:
+    pdf_files = sorted(input_dir.glob("*.pdf"))
     if not pdf_files:
         print(f"Không tìm thấy file PDF trong {input_dir}")
-        print("Tạo thư mục data/pdf/ và đặt PDF vào đó.")
         return
 
-    print(f"Tìm thấy {len(pdf_files)} file PDF:")
-    for f in pdf_files:
-        print(f"  - {f.name}")
-
-    print()
+    print(f"Tìm thấy {len(pdf_files)} file PDF trong {input_dir}.")
     for pdf_path in pdf_files:
         try:
-            out = convert_pdf_to_markdown(pdf_path, output_dir)
-            print(f"  ✓ {pdf_path.name} → {out.name}")
-        except Exception as e:
-            print(f"  ✗ {pdf_path.name}: {e}")
+            convert_pdf_to_markdown(str(pdf_path), output_dir)
+        except Exception as exc:
+            print(f"Lỗi với {pdf_path.name}: {exc}")
 
-    print(f"\nHoàn thành! Markdown files tại: {output_dir}")
+
+# =============================================================================
+# WEB APP (migrated from pdf_to_md_app/app.py)
+# =============================================================================
+
+def create_app():
+    from flask import Flask, jsonify, render_template, request
+
+    app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
+
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+
+    @app.route("/convert", methods=["POST"])
+    def convert():
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file = request.files["file"]
+        if not file or not file.filename:
+            return jsonify({"error": "No selected file"}), 400
+
+        if not file.filename.lower().endswith(".pdf"):
+            return jsonify({"error": "Invalid file format, must be PDF"}), 400
+
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                file.save(tmp.name)
+                temp_path = Path(tmp.name)
+
+            markdown_content = pdf_to_markdown_text(temp_path)
+            return jsonify({"markdown": markdown_content})
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 500
+        finally:
+            if temp_path and temp_path.exists():
+                temp_path.unlink(missing_ok=True)
+
+    return app
 
 
 # =============================================================================
 # MAIN
 # =============================================================================
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert PDF → Markdown bằng AI Vision")
-    parser.add_argument("--file", type=str, help="Convert 1 file PDF cụ thể")
+def main():
+    parser = argparse.ArgumentParser(description="PDF -> Markdown (CLI + Web)")
+    parser.add_argument("--file", type=str, help="Đường dẫn local hoặc URL đến file PDF")
+    parser.add_argument("--input-dir", type=str, default=str(PDF_INPUT_DIR), help="Thư mục chứa nhiều PDF")
+    parser.add_argument("--output-dir", type=str, default=str(MD_OUTPUT_DIR), help="Thư mục lưu Markdown")
+    parser.add_argument("--serve", action="store_true", help="Chạy web upload PDF")
+    parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=5000)
     args = parser.parse_args()
 
+    if args.serve:
+        app = create_app()
+        app.run(host=args.host, port=args.port, debug=True)
+        return
+
+    output_dir = Path(args.output_dir)
     if args.file:
-        pdf_path = Path(args.file)
-        if not pdf_path.exists():
-            print(f"File không tồn tại: {pdf_path}")
-        else:
-            convert_pdf_to_markdown(pdf_path)
+        convert_pdf_to_markdown(args.file, output_dir)
     else:
-        convert_all_pdfs()
+        convert_all_pdfs(Path(args.input_dir), output_dir)
+
+
+if __name__ == "__main__":
+    main()
