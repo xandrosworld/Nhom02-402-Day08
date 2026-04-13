@@ -13,6 +13,7 @@ def chat_logic(message, history):
             query=message,
             retrieval_mode="hybrid",
             use_rerank=True,
+            use_transform=True,
             top_k_search=15,
             top_k_select=3,
             verbose=False
