@@ -166,26 +166,28 @@ def rerank(
 
     Funnel logic (từ slide):
       Search rộng (top-20) → Rerank (top-6) → Select (top-3)
-
-    TODO Sprint 3 (nếu chọn rerank):
-    Option A — Cross-encoder:
-        from sentence_transformers import CrossEncoder
-        model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-        pairs = [[query, chunk["text"]] for chunk in candidates]
-        scores = model.predict(pairs)
-        ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
-        return [chunk for chunk, _ in ranked[:top_k]]
-
-    Option B — Rerank bằng LLM (đơn giản hơn nhưng tốn token):
-        Gửi list chunks cho LLM, yêu cầu chọn top_k relevant nhất
-
-    Khi nào dùng rerank:
-    - Dense/hybrid trả về nhiều chunk nhưng có noise
-    - Muốn chắc chắn chỉ 3-5 chunk tốt nhất vào prompt
     """
-    # TODO Sprint 3: Implement rerank
-    # Tạm thời trả về top_k đầu tiên (không rerank)
-    return candidates[:top_k]
+
+    try:
+        import voyageai
+        import os
+        client = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+        
+        docs = [chunk["text"] for chunk in candidates]
+        model_name = os.getenv("VOYAGE_RERANK_MODEL", "rerank-2")
+        
+        rerank_result = client.rerank(query=query, documents=docs, model=model_name, top_k=top_k)
+        
+        ranked_chunks = []
+        for r in rerank_result.results:
+            chunk = candidates[r.index].copy()
+            chunk["score"] = round(r.relevance_score, 4)
+            ranked_chunks.append(chunk)
+            
+        return ranked_chunks
+    except Exception as e:
+        print(f"[Rerank lỗi] {e}. Đang trả về kết quả không rerank.")
+        return candidates[:top_k]
 
 
 # =============================================================================
@@ -200,26 +202,26 @@ def transform_query(query: str, strategy: str = "expansion") -> List[str]:
       - "expansion": Thêm từ đồng nghĩa, alias, tên cũ
       - "decomposition": Tách query phức tạp thành 2-3 sub-queries
       - "hyde": Sinh câu trả lời giả (hypothetical document) để embed thay query
-
-    TODO Sprint 3 (nếu chọn query transformation):
-    Gọi LLM với prompt phù hợp với từng strategy.
-
-    Ví dụ expansion prompt:
-        "Given the query: '{query}'
-         Generate 2-3 alternative phrasings or related terms in Vietnamese.
-         Output as JSON array of strings."
-
-    Ví dụ decomposition:
-        "Break down this complex query into 2-3 simpler sub-queries: '{query}'
-         Output as JSON array."
-
-    Khi nào dùng:
-    - Expansion: query dùng alias/tên cũ (ví dụ: "Approval Matrix" → "Access Control SOP")
-    - Decomposition: query hỏi nhiều thứ một lúc
-    - HyDE: query mơ hồ, search theo nghĩa không hiệu quả
     """
-    # TODO Sprint 3: Implement query transformation
-    # Tạm thời trả về query gốc
+
+    if strategy == "expansion":
+        prompt = f"""Given the query: '{query}'
+Generate 2-3 alternative phrasings or related terms in Vietnamese.
+Do not include any numbering, prefix, or explanation. Output each as a separate line."""
+        response = call_llm(prompt)
+        alternatives = [line.strip().lstrip('-').strip() for line in response.split('\n') if line.strip()]
+        return [query] + alternatives
+    elif strategy == "decomposition":
+        prompt = f"""Break down this complex query into 2-3 simpler sub-queries in Vietnamese: '{query}'
+Do not include any numbering, prefix, or explanation. Output each sub-query on a separate line."""
+        response = call_llm(prompt)
+        sub_queries = [line.strip().lstrip('-').strip() for line in response.split('\n') if line.strip()]
+        return sub_queries
+    elif strategy == "hyde":
+        prompt = f"""Write a hypothetical document paragraph in Vietnamese that would directly answer this query: '{query}'
+Do not include any explanation. Just provide the direct paragraph."""
+        response = call_llm(prompt)
+        return [response.strip()]
     return [query]
 
 
@@ -261,25 +263,23 @@ def build_grounded_prompt(query: str, context_block: str) -> str:
     2. Abstain: Thiếu context thì nói không đủ dữ liệu
     3. Citation: Gắn source/section khi có thể
     4. Short, clear, stable: Output ngắn, rõ, nhất quán
-
-    TODO Sprint 2:
-    Đây là prompt baseline. Trong Sprint 3, bạn có thể:
-    - Thêm hướng dẫn về format output (JSON, bullet points)
-    - Thêm ngôn ngữ phản hồi (tiếng Việt vs tiếng Anh)
-    - Điều chỉnh tone phù hợp với use case (CS helpdesk, IT support)
     """
-    prompt = f"""Answer only from the retrieved context below.
-If the context is insufficient to answer the question, say you do not know and do not make up information.
-Cite the source field (in brackets like [1]) when possible.
-Keep your answer short, clear, and factual.
-Respond in the same language as the question.
+    prompt = f"""Bạn là một Chuyên viên CS & IT Helpdesk (trợ lý nội bộ) cực kỳ chuyên nghiệp và tận tâm.
+    Dưới đây là các chứng cứ (context) được hệ thống trích xuất từ tài liệu policy, quy trình và SLA của nội bộ công ty.
 
-Question: {query}
+    YÊU CẦU BẮT BUỘC:
+    1. EVIDENCE-ONLY: Chỉ trả lời dựa rập khuôn theo nội dung chứng cứ bên dưới.
+    2. ABSTAIN: Nếu context thiếu thông tin hoặc không liên quan, hãy thẳng thắn từ chối: "Xin lỗi, hiện tại tôi không có đủ dữ liệu từ tài liệu hệ thống để trả lời câu hỏi này." và TUYỆT ĐỐI KHÔNG chế tạo thêm số liệu/quy trình.
+    3. CITATION: Bắt buộc đính kèm trích dẫn nguồn ở định dạng [1], [2] khi dẫn chứng điều khoản, SLA hay thông tin kỹ thuật nào.
+    4. FORMAT: Trình bày súc tích. Hãy sử dụng bullet points cho các điều kiện, bước xử lý, quyền truy cập hoặc các mã lỗi.
+    5. TONE: Giữ giọng văn thân thiện, hỗ trợ bằng Tiếng Việt.
 
-Context:
-{context_block}
+    Question: {query}
 
-Answer:"""
+    Context:
+    {context_block}
+
+    Answer:"""
     return prompt
 
 
