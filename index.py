@@ -22,6 +22,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# MTT: Khởi tạo Voyage AI client một lần (tránh tạo lại mỗi lần gọi)
+import voyageai
+_voyage_client = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
+VOYAGE_MODEL = os.getenv("VOYAGE_EMBEDDING_MODEL", "voyage-multilingual-2")
+
 # =============================================================================
 # CẤU HÌNH
 # =============================================================================
@@ -191,28 +196,37 @@ def _split_by_size(
             "metadata": {**base_metadata, "section": section},
         }]
 
-    # TODO: Implement split theo paragraph với overlap
-    # Gợi ý:
-    # paragraphs = text.split("\n\n")
-    # Ghép paragraphs lại cho đến khi gần đủ chunk_chars
-    # Lấy overlap từ đoạn cuối chunk trước
+    # MTT: Split theo paragraph (\n\n) để không cắt giữa điều khoản
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     chunks = []
-    start = 0
-    while start < len(text):
-        end = min(start + chunk_chars, len(text))
-        chunk_text = text[start:end]
+    current_text = ""
+    overlap_buffer = ""
 
-        # TODO: Tìm ranh giới tự nhiên gần nhất (dấu xuống dòng, dấu chấm)
-        # thay vì cắt giữa câu
+    for para in paragraphs:
+        candidate = (current_text + "\n\n" + para).strip() if current_text else para
+        if len(candidate) <= chunk_chars:
+            current_text = candidate
+        else:
+            if current_text:
+                chunks.append({
+                    "text": (overlap_buffer + "\n\n" + current_text).strip() if overlap_buffer else current_text,
+                    "metadata": {**base_metadata, "section": section},
+                })
+                # Lấy đoạn cuối làm overlap cho chunk tiếp theo
+                overlap_buffer = current_text[-overlap_chars:] if len(current_text) > overlap_chars else current_text
+            current_text = para
 
+    # Lưu đoạn cuối còn lại
+    if current_text:
         chunks.append({
-            "text": chunk_text,
+            "text": (overlap_buffer + "\n\n" + current_text).strip() if overlap_buffer else current_text,
             "metadata": {**base_metadata, "section": section},
         })
-        # Overlap: lùi lại overlap_chars để chunk sau có ngữ cảnh từ chunk trước
-        start = end - overlap_chars
 
-    return chunks
+    return chunks if chunks else [{
+        "text": text,
+        "metadata": {**base_metadata, "section": section},
+    }]
 
 
 # =============================================================================
@@ -222,29 +236,12 @@ def _split_by_size(
 
 def get_embedding(text: str) -> List[float]:
     """
-    Tạo embedding vector cho một đoạn text.
-
-    TODO Sprint 1:
-    Chọn một trong hai:
-
-    Option A — OpenAI Embeddings (cần OPENAI_API_KEY):
-        from openai import OpenAI
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.embeddings.create(
-            input=text,
-            model="text-embedding-3-small"
-        )
-        return response.data[0].embedding
-
-    Option B — Sentence Transformers (chạy local, không cần API key):
-        from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-        return model.encode(text).tolist()
+    Tạo embedding vector cho một đoạn text dùng Voyage AI.
+    Model: voyage-multilingual-2 — hỗ trợ tiếng Việt tốt.
+    # MTT: Implement Sprint 1
     """
-    raise NotImplementedError(
-        "TODO: Implement get_embedding().\n"
-        "Chọn Option A (OpenAI) hoặc Option B (Sentence Transformers) trong TODO comment."
-    )
+    result = _voyage_client.embed([text], model=VOYAGE_MODEL)
+    return result.embeddings[0]
 
 
 def build_index(docs_dir: Path = DOCS_DIR, db_dir: Path = CHROMA_DB_DIR) -> None:
@@ -270,51 +267,47 @@ def build_index(docs_dir: Path = DOCS_DIR, db_dir: Path = CHROMA_DB_DIR) -> None
         )
     """
     import chromadb
+    from tqdm import tqdm
 
     print(f"Đang build index từ: {docs_dir}")
     db_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: Khởi tạo ChromaDB
-    # client = chromadb.PersistentClient(path=str(db_dir))
-    # collection = client.get_or_create_collection(...)
+    # MTT: Khởi tạo ChromaDB PersistentClient
+    client = chromadb.PersistentClient(path=str(db_dir))
+    collection = client.get_or_create_collection(
+        name="rag_lab",
+        metadata={"hnsw:space": "cosine"}
+    )
 
     total_chunks = 0
-    doc_files = list(docs_dir.glob("*.txt"))
+    # MTT: Đọc cả .txt và .md (hỗ trợ output từ preprocess_pdf.py)
+    doc_files = list(docs_dir.glob("*.txt")) + list(docs_dir.glob("*.md"))
 
     if not doc_files:
-        print(f"Không tìm thấy file .txt trong {docs_dir}")
+        print(f"Không tìm thấy file trong {docs_dir}")
         return
 
     for filepath in doc_files:
         print(f"  Processing: {filepath.name}")
         raw_text = filepath.read_text(encoding="utf-8")
 
-        # TODO: Gọi preprocess_document
-        # doc = preprocess_document(raw_text, str(filepath))
-
-        # TODO: Gọi chunk_document
-        # chunks = chunk_document(doc)
-
-        # TODO: Embed và lưu từng chunk vào ChromaDB
-        # for i, chunk in enumerate(chunks):
-        #     chunk_id = f"{filepath.stem}_{i}"
-        #     embedding = get_embedding(chunk["text"])
-        #     collection.upsert(
-        #         ids=[chunk_id],
-        #         embeddings=[embedding],
-        #         documents=[chunk["text"]],
-        #         metadatas=[chunk["metadata"]],
-        #     )
-        # total_chunks += len(chunks)
-
-        # Placeholder để code không lỗi khi chưa implement
         doc = preprocess_document(raw_text, str(filepath))
         chunks = chunk_document(doc)
-        print(f"    → {len(chunks)} chunks (embedding chưa implement)")
-        total_chunks += len(chunks)
 
-    print(f"\nHoàn thành! Tổng số chunks: {total_chunks}")
-    print("Lưu ý: Embedding chưa được implement. Xem TODO trong get_embedding() và build_index().")
+        # MTT: Embed và upsert từng chunk vào ChromaDB
+        for i, chunk in enumerate(tqdm(chunks, desc=f"    Embedding {filepath.stem}", leave=False)):
+            chunk_id = f"{filepath.stem}_{i}"
+            embedding = get_embedding(chunk["text"])
+            collection.upsert(
+                ids=[chunk_id],
+                embeddings=[embedding],
+                documents=[chunk["text"]],
+                metadatas=[chunk["metadata"]],
+            )
+        total_chunks += len(chunks)
+        print(f"    → {len(chunks)} chunks indexed")
+
+    print(f"\n✅ Hoàn thành! Tổng số chunks: {total_chunks}")
 
 
 # =============================================================================
@@ -418,16 +411,13 @@ if __name__ == "__main__":
             print(f"\n  [Chunk {i+1}] Section: {chunk['metadata']['section']}")
             print(f"  Text: {chunk['text'][:150]}...")
 
-    # Bước 3: Build index (yêu cầu implement get_embedding)
+    # Bước 3: Build index  # MTT: uncomment sau khi implement get_embedding
     print("\n--- Build Full Index ---")
-    print("Lưu ý: Cần implement get_embedding() trước khi chạy bước này!")
-    # Uncomment dòng dưới sau khi implement get_embedding():
-    # build_index()
+    build_index()
 
-    # Bước 4: Kiểm tra index
-    # Uncomment sau khi build_index() thành công:
-    # list_chunks()
-    # inspect_metadata_coverage()
+    # Bước 4: Kiểm tra index  # MTT
+    list_chunks()
+    inspect_metadata_coverage()
 
     print("\nSprint 1 setup hoàn thành!")
     print("Việc cần làm:")
